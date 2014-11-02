@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Frequênciário</string>
+    <string name="action_settings">Configurações</string>
+    <string name="repetition_label">Repetição:</string>
+    <string name="progress_label">Progresso:</string>
+    <string name="high_label">Altura</string>
+    <string name="medium_label">Média</string>
+    <string name="low_label">Baixa</string>
+    <string name="never_label">Nunca</string>
+    <string name="frequency_label">Frequência Rank:</string>
+    <string name="prev_label">&lt; Anterior</string>
+    <string name="next_label">Próxima &gt;</string>
+    <string name="lesson_complete">aula completa!</string>
+</resources>

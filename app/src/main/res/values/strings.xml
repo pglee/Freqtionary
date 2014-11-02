@@ -3,6 +3,7 @@
     <string name="app_name">Freqtionary</string>
     <string name="action_settings">Settings</string>
     <string name="repetition_label">Repetition:</string>
+    <string name="progress_label">Progress:</string>
     <string name="high_label">High</string>
     <string name="medium_label">Medium</string>
     <string name="low_label">Low</string>
@@ -10,4 +11,5 @@
     <string name="frequency_label">Frequency Rank:</string>
     <string name="prev_label">&lt; Previous</string>
     <string name="next_label">Next &gt;</string>
+    <string name="lesson_complete">Lesson Complete!</string>
 </resources>

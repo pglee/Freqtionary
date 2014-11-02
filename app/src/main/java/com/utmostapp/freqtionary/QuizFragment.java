@@ -21,6 +21,10 @@ public class QuizFragment extends Fragment
     private static final String TAG = "QuizFragment";
     private WordChooser wordChooser;
     private TextView frequencyView;
+    private TextView highTotalView;
+    private TextView medTotalView;
+    private TextView lowTotalView;
+    private TextView neverTotalView;
     private RadioGroup repetitionChoice;
     private Button previousButton;
     private Button nextButton;
@@ -34,6 +38,7 @@ public class QuizFragment extends Fragment
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        setRetainInstance(true);
     }
 
     @Override
@@ -43,10 +48,16 @@ public class QuizFragment extends Fragment
         // Inflate the layout for this fragment
         View layout          =  inflater.inflate(R.layout.fragment_quiz, container, false);
 
-        this.wordChooser     = WordChooser.getInstance(getActivity());
         this.frequencyView   = (TextView)layout.findViewById(R.id.frequency_value);
-        this.nativeFragment  = new NativeWordFragment();
-        this.foreignFragment = new ForeignWordFragment();
+
+        this.highTotalView   = (TextView)layout.findViewById(R.id.highCount);
+        this.medTotalView    = (TextView)layout.findViewById(R.id.medCount);
+        this.lowTotalView    = (TextView)layout.findViewById(R.id.lowCount);
+        this.neverTotalView  = (TextView)layout.findViewById(R.id.neverCount);
+
+        this.wordChooser     = WordChooser.getInstance(getActivity());
+        this.nativeFragment  = NativeWordFragment.newInstance(this.wordChooser);
+        this.foreignFragment = ForeignWordFragment.newInstance(this.wordChooser);
         this.wordContainer   = (FrameLayout)layout.findViewById(R.id.fragment_word_container);
         this.wordContainer.setOnClickListener(new View.OnClickListener()
         {
@@ -89,14 +100,26 @@ public class QuizFragment extends Fragment
 
         displayWordData(this.wordChooser.getCurrentWord());
         addChildFragment(this.foreignFragment);
+        updateStatistics();
+
         return layout;
+    }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        this.wordChooser.saveWords(getActivity());
     }
 
     private void displayWordData(Word word)
     {
+        if(this.isNativeShown)
+            switchLanguage();
+
         this.nativeFragment.assignWord(word);
         this.foreignFragment.assignWord(word);
-        word.assignFrequencyText(this.frequencyView);
+        word.assignRankText(this.frequencyView);
 
         if(word.isHigh())
             this.repetitionChoice.check(R.id.highChoice);
@@ -106,9 +129,6 @@ public class QuizFragment extends Fragment
             this.repetitionChoice.check(R.id.lowChoice);
         else if(word.isNever())
             this.repetitionChoice.check(R.id.neverChoice);
-
-        if(this.isNativeShown)
-            switchLanguage();
     }
 
     public void handleRadioChanged(Word word, RadioGroup group, int checkedId)
@@ -116,20 +136,30 @@ public class QuizFragment extends Fragment
         switch(checkedId)
         {
             case R.id.highChoice:
-                word.setHigh();
+                this.wordChooser.setHighRepetition(word);
                 break;
             case R.id.mediumChoice:
-                word.setMedium();
+                this.wordChooser.setMediumRepetition(word);
                 break;
             case R.id.lowChoice:
-                word.setLow();
+                this.wordChooser.setLowRepetition(word);
                 break;
             case R.id.neverChoice:
-                word.setNever();
+                this.wordChooser.setNeverFrequency(word);
                 break;
             default:
-                word.setHigh();
+                this.wordChooser.setHighRepetition(word);
         }
+
+        updateStatistics();
+    }
+
+    private void updateStatistics()
+    {
+        this.highTotalView.setText(this.wordChooser.highTotal());
+        this.medTotalView.setText(this.wordChooser.mediumTotal());
+        this.lowTotalView.setText(this.wordChooser.lowTotal());
+        this.neverTotalView.setText(this.wordChooser.neverTotal());
     }
 
     //switches between foreign and native word
@@ -147,7 +177,8 @@ public class QuizFragment extends Fragment
                     R.animator.card_flip_right_in, R.animator.card_flip_right_out);
             transaction.remove(this.foreignFragment);
             transaction.remove(this.nativeFragment);
-            transaction.add(R.id.fragment_word_container, this.nativeFragment).commit();
+            transaction.add(R.id.fragment_word_container, this.nativeFragment);
+            transaction.commit();
         }
         else
         {
@@ -156,7 +187,8 @@ public class QuizFragment extends Fragment
                     R.animator.card_flip_left_in, R.animator.card_flip_left_out);
             transaction.remove(this.foreignFragment);
             transaction.remove(this.nativeFragment);
-            transaction.add(R.id.fragment_word_container, this.foreignFragment).commit();
+            transaction.add(R.id.fragment_word_container, this.foreignFragment);
+            transaction.commit();
         }
     }
 
@@ -175,9 +207,28 @@ public class QuizFragment extends Fragment
         }
     }
 
-    public class ForeignWordFragment extends Fragment
+    public static class ForeignWordFragment extends Fragment
     {
+        private static final String WORD_CHOOSER = "ForeignWordFragment";
         private TextView foreignWordView;
+        private WordChooser wordChooser;
+
+        public static final ForeignWordFragment newInstance(WordChooser wordChooser)
+        {
+            ForeignWordFragment instance = new ForeignWordFragment();
+            Bundle bundle                = new Bundle(1);
+            bundle.putSerializable(WORD_CHOOSER, wordChooser);
+            instance.setArguments(bundle);
+
+            return instance;
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
+        }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -185,7 +236,7 @@ public class QuizFragment extends Fragment
             View layout          = inflater.inflate(R.layout.fragment_foreign_word, container, false);
             this.foreignWordView = (TextView)layout.findViewById(R.id.foreign_text);
 
-            assignWord(wordChooser.getCurrentWord());
+            assignWord(this.wordChooser.getCurrentWord());
 
             return layout;
         }
@@ -197,9 +248,28 @@ public class QuizFragment extends Fragment
         }
     }
 
-    public class NativeWordFragment extends Fragment
+    public static class NativeWordFragment extends Fragment
     {
         private TextView nativeWordView;
+        private WordChooser wordChooser;
+        private static final String WORD_CHOOSER = "NativeWordFragment";
+
+        public static final NativeWordFragment newInstance(WordChooser wordChooser)
+        {
+            NativeWordFragment instance = new NativeWordFragment();
+            Bundle bundle               = new Bundle(1);
+            bundle.putSerializable(WORD_CHOOSER, wordChooser);
+            instance.setArguments(bundle);
+
+            return instance;
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
+        }
 
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
@@ -207,7 +277,7 @@ public class QuizFragment extends Fragment
             View layout          = inflater.inflate(R.layout.fragment_native_word, container, false);
             this.nativeWordView  = (TextView)layout.findViewById(R.id.native_text);
 
-            assignWord(wordChooser.getCurrentWord());
+            assignWord(this.wordChooser.getCurrentWord());
 
             return layout;
         }
