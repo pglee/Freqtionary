@@ -31,6 +31,12 @@ public class Word implements Serializable
         this(json.getInt(RANK), json.getString(NATIVE), json.getString(FOREIGN), json.getInt(REPETITION));
     }
 
+    @Override
+    public String toString()
+    {
+        return foreignText + " : " + nativeText + " : " + repetition;
+    }
+
     public Word(int rank, String nativeText, String foreignText, int repetition)
     {
         this.rank        = rank;
@@ -46,6 +52,7 @@ public class Word implements Serializable
         this.foreignText = foreignText;
         this.repetition  = HIGH;
     }
+
 
     public JSONObject toJSON() throws JSONException
     {

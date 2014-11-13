@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:padding="5dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginBottom="8dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clickable="false">
+    <TextView
+        android:id="@+id/rank"
+        android:text="1000"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:layout_width="40dp"
+        android:padding="4dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+    <TextView
+        android:id="@+id/primary_word"
+        android:text="Foreign Word"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:padding="4dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toRightOf="@id/rank" />
+
+    <TextView
+        android:id="@+id/secondary_word"
+        android:text="Native Word"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:padding="4dp"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@id/primary_word"
+        android:layout_toRightOf="@id/primary_word"
+        android:layout_centerHorizontal="true" />
+
+    <Spinner
+        android:id="@+id/repetition_spinner"
+        android:textSize="?android:attr/textAppearanceSmall"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignBottom="@id/secondary_word"
+        android:entries="@array/repetition_options"
+        android:spinnerMode="dropdown" />
+</RelativeLayout>

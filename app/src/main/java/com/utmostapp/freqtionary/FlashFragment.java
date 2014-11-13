@@ -3,7 +3,11 @@ package com.utmostapp.freqtionary;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.Intent;
+import android.widget.AdapterView;
 import android.widget.FrameLayout;
+import android.widget.Spinner;
+import android.widget.TableLayout;
 import android.widget.TextView;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,22 +20,25 @@ import android.widget.RadioGroup;
 /**
  * Created by plee on 9/21/14.
  */
-public class QuizFragment extends Fragment
+public class FlashFragment extends Fragment
 {
-    private static final String TAG = "QuizFragment";
+    private static final String TAG = "FlashFragment";
     private WordChooser wordChooser;
-    private TextView frequencyView;
     private TextView highTotalView;
     private TextView medTotalView;
     private TextView lowTotalView;
     private TextView neverTotalView;
     private RadioGroup repetitionChoice;
+    private TableLayout progressLayout;
+
+    private Button flipButton;
     private Button previousButton;
     private Button nextButton;
     private FrameLayout wordContainer;
     private NativeWordFragment nativeFragment;
     private ForeignWordFragment foreignFragment;
 
+    private boolean isSwitched;
     private boolean isNativeShown;
 
     @Override
@@ -46,19 +53,25 @@ public class QuizFragment extends Fragment
                              Bundle savedInstanceState)
     {
         // Inflate the layout for this fragment
-        View layout          =  inflater.inflate(R.layout.fragment_quiz, container, false);
+        View layout          =  inflater.inflate(R.layout.fragment_flash, container, false);
 
-        this.frequencyView   = (TextView)layout.findViewById(R.id.frequency_value);
+        int lessonNumber = 1;
+
+        LessonSpinnerListener listener = new LessonSpinnerListener();
+        Spinner lessonSpinner          = (Spinner)layout.findViewById(R.id.flash_lesson_spinner);
+        lessonSpinner.setSelection(lessonNumber - 1);
+        lessonSpinner.setOnItemSelectedListener(listener);
 
         this.highTotalView   = (TextView)layout.findViewById(R.id.highCount);
         this.medTotalView    = (TextView)layout.findViewById(R.id.medCount);
         this.lowTotalView    = (TextView)layout.findViewById(R.id.lowCount);
         this.neverTotalView  = (TextView)layout.findViewById(R.id.neverCount);
 
-        this.wordChooser     = WordChooser.getInstance(getActivity());
+        this.wordChooser     = WordChooser.getInstance(getActivity(), lessonNumber);
         this.nativeFragment  = NativeWordFragment.newInstance(this.wordChooser);
         this.foreignFragment = ForeignWordFragment.newInstance(this.wordChooser);
-        this.wordContainer   = (FrameLayout)layout.findViewById(R.id.fragment_word_container);
+
+        this.wordContainer = (FrameLayout)layout.findViewById(R.id.fragment_word_container);
         this.wordContainer.setOnClickListener(new View.OnClickListener()
         {
             @Override
@@ -75,6 +88,29 @@ public class QuizFragment extends Fragment
             public void onCheckedChanged(RadioGroup group, int checkedId)
             {
                 handleRadioChanged(wordChooser.getCurrentWord(), group, checkedId);
+            }
+        });
+
+        this.flipButton = (Button)layout.findViewById(R.id.flip_button);
+        this.flipButton.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                isSwitched = !isSwitched;
+
+                if(isSwitched)
+                {
+                    view.setBackgroundColor(getResources().getColor(R.color.secondary_color));
+                    isNativeShown = false;
+                    switchLanguage();
+                }
+                else
+                {
+                    view.setBackgroundColor(getResources().getColor(R.color.primary_color));
+                    isNativeShown = true;
+                    switchLanguage();
+                }
             }
         });
 
@@ -98,9 +134,21 @@ public class QuizFragment extends Fragment
             }
         });
 
-        displayWordData(this.wordChooser.getCurrentWord());
+        this.progressLayout = (TableLayout)layout.findViewById(R.id.progressLayout);
+        this.progressLayout.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                Log.d(TAG, "Progress layout clicked.");
+                Intent intent = new Intent(getActivity(), WordListActivity.class);
+                startActivity(intent);
+            }
+        });
+
         addChildFragment(this.foreignFragment);
-        updateStatistics();
+        displayWordData(this.wordChooser.getCurrentWord());
+        updateProgress();
 
         return layout;
     }
@@ -112,14 +160,21 @@ public class QuizFragment extends Fragment
         this.wordChooser.saveWords(getActivity());
     }
 
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        displayWordData(this.wordChooser.getCurrentWord());
+        updateProgress();
+    }
+
     private void displayWordData(Word word)
     {
-        if(this.isNativeShown)
+        if((this.isNativeShown && !this.isSwitched) || (!this.isNativeShown && this.isSwitched))
             switchLanguage();
 
         this.nativeFragment.assignWord(word);
         this.foreignFragment.assignWord(word);
-        word.assignRankText(this.frequencyView);
 
         if(word.isHigh())
             this.repetitionChoice.check(R.id.highChoice);
@@ -145,16 +200,16 @@ public class QuizFragment extends Fragment
                 this.wordChooser.setLowRepetition(word);
                 break;
             case R.id.neverChoice:
-                this.wordChooser.setNeverFrequency(word);
+                this.wordChooser.setNeverRepetition(word);
                 break;
             default:
                 this.wordChooser.setHighRepetition(word);
         }
 
-        updateStatistics();
+        updateProgress();
     }
 
-    private void updateStatistics()
+    private void updateProgress()
     {
         this.highTotalView.setText(this.wordChooser.highTotal());
         this.medTotalView.setText(this.wordChooser.mediumTotal());
@@ -286,6 +341,30 @@ public class QuizFragment extends Fragment
         {
             if(nativeWordView != null)
                 word.assignNativeText(nativeWordView);
+        }
+    }
+
+    private class LessonSpinnerListener implements AdapterView.OnItemSelectedListener
+    {
+        public LessonSpinnerListener()
+        {
+        }
+
+        //implementation of listener for the spinner
+        public void onItemSelected(AdapterView<?> parent, View view, int pos, long id)
+        {
+            Log.d(TAG, "  pos:" + pos);
+            int lessonNumber = pos + 1;
+
+            wordChooser.loadLesson(getActivity(), lessonNumber);
+            displayWordData(wordChooser.getCurrentWord());
+            updateProgress();
+        }
+
+        //implementation of listener for the spinner
+        public void onNothingSelected(AdapterView<?> parent)
+        {
+            //do nothing
         }
     }
 }

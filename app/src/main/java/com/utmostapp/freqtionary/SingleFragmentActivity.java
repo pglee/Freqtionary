@@ -13,6 +13,7 @@ import com.utmostapp.freqtionary.R;
  */
 public abstract class SingleFragmentActivity extends Activity
 {
+    //factory method for child class
     protected abstract Fragment createFragment();
 
     @Override

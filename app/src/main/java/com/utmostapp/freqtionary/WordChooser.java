@@ -2,6 +2,7 @@ package com.utmostapp.freqtionary;
 
 import android.content.Context;
 import android.util.Log;
+import android.widget.ArrayAdapter;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -12,11 +13,10 @@ import java.util.List;
  */
 public class WordChooser implements Serializable
 {
-    private static final int LIST_TOTAL  = 10;
-    private static final String TAG      = "WordChooser";
-    private static final String FILENAME = "words.json";
+    private static final int LIST_TOTAL     = 10;
+    private static final String TAG         = "WordChooser";
+    private static final String FILE_PREFIX = "lesson";
 
-    
     private static WordChooser singleton;
 
     private ArrayList<Word> masterList;
@@ -28,17 +28,56 @@ public class WordChooser implements Serializable
     
     private int historyIndex   = 0;
     private int newWordCounter = 0;
+    private String fileName;
     private Word lessonComplete;
 
-    private WordChooser(Context context)
+    private WordChooser(Context context, int lessonNumber)
     {
+        loadLesson(context, lessonNumber);
+
+        this.lessonComplete = new Word(0, context.getResources().getString(R.string.lesson_complete), "Lesson Complete!", Word.NEVER);
+
+    }
+
+    //factory method
+    public static WordChooser getInstance(Context context, int lessonNumber)
+    {
+        if(singleton == null)
+            singleton = new WordChooser(context, lessonNumber);
+
+        return singleton;
+    }
+
+    //loads the lesson from the file system either from the sandbox if saved before or from the raw resource
+    public void loadLesson(Context context, int lessonNumber)
+    {
+        saveWords(context);
+
+        if(lessonNumber < 1 && lessonNumber > 2)
+            lessonNumber = 1;
+
+        ArrayList<Word> holdList;
+        String holdName;
+
         try
         {
-            this.masterList     = WordJSONSerializer.loadWords(context, FILENAME, R.raw.words);
-            this.lessonComplete = new Word(0, context.getString(R.string.lesson_complete), "Lesson Complete!", Word.NEVER);
-            Log.d(TAG, "JSON load success. " + this.masterList.size());
+            holdName       = jsonFileName(lessonNumber);
+            Log.d(TAG, "holdName " + holdName);
 
-            loadLists(this.masterList);
+            int resourceId = context.getResources().getIdentifier(resourceName(lessonNumber), "raw", context.getPackageName());
+            Log.d(TAG, "resourceId " + resourceId + " real Id " + R.raw.lesson1);
+            holdList       = WordJSONSerializer.loadWords(context, holdName, resourceId);
+            Log.d(TAG, "holdList " + holdList.size());
+            loadLists(holdList);
+
+            this.masterList = holdList;
+            this.fileName   = holdName;
+
+            this.historyIndex   = 0;
+            this.newWordCounter = 0;
+            this.historyList.clear();
+
+            Log.d(TAG, "JSON load success. ");
         }
         catch(Exception exception)
         {
@@ -46,9 +85,38 @@ public class WordChooser implements Serializable
         }
     }
 
-    public String wordTotal()
+    //save words to the sandbox
+    public boolean saveWords(Context context)
     {
-        return Integer.toString(masterList.size());
+        boolean isOkay;
+
+        if(this.fileName != null && this.fileName.length() > 0)
+        {
+            try
+            {
+                WordJSONSerializer.saveWords(context, this.fileName, this.masterList);
+                Log.d(TAG, "Crimes saved to file.");
+                isOkay = true;
+            } catch (Exception e)
+            {
+                Log.e(TAG, "ERROR saving words: ", e);
+                isOkay = false;
+            }
+        }
+        else
+            isOkay = true;
+
+        return isOkay;
+    }
+
+    private String jsonFileName(int lessonNumber)
+    {
+        return resourceName(lessonNumber) + ".json";
+    }
+
+    private String resourceName(int lessonNumber)
+    {
+        return FILE_PREFIX + lessonNumber;
     }
 
     public String highTotal()
@@ -91,35 +159,6 @@ public class WordChooser implements Serializable
         }
     }
 
-    //factory method
-    public static WordChooser getInstance(Context context)
-    {
-        if(singleton == null)
-            singleton = new WordChooser(context);
-
-        return singleton;
-    }
-
-    //save words to the file defined in the constructor
-    public boolean saveWords(Context context)
-    {
-        boolean isOkay;
-
-        try
-        {
-            WordJSONSerializer.saveWords(context, FILENAME, this.masterList);
-            Log.d(TAG, "Crimes saved to file.");
-            isOkay = true;
-        }
-        catch(Exception e)
-        {
-            Log.e(TAG, "ERROR saving words: ", e);
-            isOkay = false;
-        }
-
-        return isOkay;
-    }
-
     //purges the given word from all lists
     private boolean removeFromRepetitionLists(Word word)
     {
@@ -157,7 +196,7 @@ public class WordChooser implements Serializable
     }
 
     //sets the word in the never frequency rate
-    public void setNeverFrequency(Word word)
+    public void setNeverRepetition(Word word)
     {
         removeFromRepetitionLists(word);
         word.setNever();
@@ -165,14 +204,9 @@ public class WordChooser implements Serializable
         Log.d(TAG, "setNeverFrequency");
     }
 
-    //gets the first word from the list and then puts it last in the list
-    private static Word getWord(ArrayList<Word> list)
+    public ArrayList<Word> getMasterList()
     {
-        //remove from the top and add to the bottom of the list
-        Word word = list.remove(0);
-        list.add(word);
-
-        return word;
+        return this.masterList;
     }
 
     //get the current word
@@ -205,9 +239,10 @@ public class WordChooser implements Serializable
     public Word getNextWord()
     {
         Word word;
+        int lastIndex = this.historyList.size() - 1;
 
         //If we are still traversing history
-        if(this.historyIndex + 1 < this.historyList.size())
+        if(this.historyIndex < lastIndex)
         {
             this.historyIndex++;
             word = historyList.get(this.historyIndex);
@@ -217,20 +252,37 @@ public class WordChooser implements Serializable
         //get a new word
         else
         {
-            Word currentWord = historyList.get(historyList.size() - 1);
+            Word currentWord = historyList.get(lastIndex);
             word             = getNewWord();
 
             //don't add to history if the new word is the same as the current word
-            if(word != currentWord)
+            if(word != currentWord && word != this.lessonComplete)
             {
                 historyList.add(word);
                 this.historyIndex = this.historyList.size() - 1;
+                Log.d(TAG, "Getting a new word and putting it in history");
             }
 
-            Log.d(TAG, "Getting a new word and putting it in history");
+            //if lesson complete then force last word as the previous word in history
+            //else if(word == this.lessonComplete)
+              //  this.historyIndex = this.historyList.size();
         }
 
         return word;
+    }
+
+    private int calculateRepRate(int baseSize)
+    {
+        int medRate;
+
+        //if base size is 1 then med Rep Rate should be equal to the base RepRate
+        //otherwise it should be double the size of the base List
+        if(baseSize > 1)
+            medRate = baseSize + 1;
+        else
+            medRate = 2;
+
+        return medRate;
     }
 
     //gets the word based on the frequency rate
@@ -240,8 +292,10 @@ public class WordChooser implements Serializable
         Word word;
 
         int highRepRate = 1;
-        int medRepRate  = this.highList.size() * 2;
-        int lowRepRate  = medRepRate * 2;
+        int totalHighWords = this.highList.size();
+        int totalMedWords  = this.medList.size();
+        int medRepRate     = calculateRepRate(totalHighWords);
+        int lowRepRate     = calculateRepRate(totalHighWords + totalMedWords);
 
         Log.d(TAG, "Rates High: " + highRepRate + "       Med: " + medRepRate + "       Low: " + lowRepRate);
 
@@ -286,10 +340,19 @@ public class WordChooser implements Serializable
         return word;
     }
 
+    //gets the first word from the list and then puts it last in the list
+    private static Word getWord(ArrayList<Word> list)
+    {
+        //remove from the top and add to the bottom of the list
+        Word word = list.remove(0);
+        list.add(word);
+
+        return word;
+    }
+
     //true if the passed repetition rate is the current rate
     private boolean isCurrentRate(int repetitionRate, ArrayList<Word> list)
     {
         return (list != null && list.size() > 0 && (repetitionRate == 0 || (this.newWordCounter % repetitionRate) == 0));
     }
-
 }

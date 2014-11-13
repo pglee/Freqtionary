@@ -3,13 +3,24 @@
     <string name="app_name">Freqtionary</string>
     <string name="action_settings">Settings</string>
     <string name="repetition_label">Repetition:</string>
+    <string name="switch_label">Switch</string>
     <string name="progress_label">Progress:</string>
     <string name="high_label">High</string>
-    <string name="medium_label">Medium</string>
+    <string name="medium_label">Med</string>
     <string name="low_label">Low</string>
     <string name="never_label">Never</string>
-    <string name="frequency_label">Frequency Rank:</string>
+    <string name="frequency_label">Freq Rank:</string>
     <string name="prev_label">&lt; Previous</string>
     <string name="next_label">Next &gt;</string>
     <string name="lesson_complete">Lesson Complete!</string>
+    <string-array name="repetition_options">
+        <item>High</item>
+        <item>Med</item>
+        <item>Low</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="lesson_options">
+        <item>Lesson 1</item>
+        <item>Lesson 2</item>
+    </string-array>
 </resources>
