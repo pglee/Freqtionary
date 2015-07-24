@@ -3,9 +3,19 @@ package com.utmostapp.freqtionary;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.app.ListActivity;
+import android.content.Context;
 import android.content.Intent;
+import android.support.v4.view.VelocityTrackerCompat;
+import android.view.GestureDetector;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.widget.AdapterView;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TextView;
@@ -22,7 +32,9 @@ import android.widget.RadioGroup;
  */
 public class FlashFragment extends Fragment
 {
-    private static final String TAG = "FlashFragment";
+    private static final String TAG                 = "FlashFragment";
+    private static final String DEFAULT_LESSON_FILE = "lesson1.json";
+
     private WordChooser wordChooser;
     private TextView highTotalView;
     private TextView medTotalView;
@@ -31,21 +43,25 @@ public class FlashFragment extends Fragment
     private RadioGroup repetitionChoice;
     private TableLayout progressLayout;
 
-    private Button flipButton;
+    private ImageButton playButton;
     private Button previousButton;
     private Button nextButton;
     private FrameLayout wordContainer;
-    private NativeWordFragment nativeFragment;
-    private ForeignWordFragment foreignFragment;
+    private TopCardFragment topFragment;
+    private BottomCardFragment bottomFragment;
+    private AudioPlayer audioPlayer = new AudioPlayer();
+    private Thread autoRunThread;
 
+    private boolean isAutoRun;
     private boolean isSwitched;
-    private boolean isNativeShown;
+    private boolean isTopShown;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        setHasOptionsMenu(true);
     }
 
     @Override
@@ -53,23 +69,27 @@ public class FlashFragment extends Fragment
                              Bundle savedInstanceState)
     {
         // Inflate the layout for this fragment
-        View layout          =  inflater.inflate(R.layout.fragment_flash, container, false);
+        View layout          = inflater.inflate(R.layout.fragment_flash, container, false);
 
-        int lessonNumber = 1;
-
-        LessonSpinnerListener listener = new LessonSpinnerListener();
-        Spinner lessonSpinner          = (Spinner)layout.findViewById(R.id.flash_lesson_spinner);
-        lessonSpinner.setSelection(lessonNumber - 1);
-        lessonSpinner.setOnItemSelectedListener(listener);
+        layout.setOnTouchListener(new FlashTouchListener());
 
         this.highTotalView   = (TextView)layout.findViewById(R.id.highCount);
         this.medTotalView    = (TextView)layout.findViewById(R.id.medCount);
         this.lowTotalView    = (TextView)layout.findViewById(R.id.lowCount);
         this.neverTotalView  = (TextView)layout.findViewById(R.id.neverCount);
+        this.wordChooser     = WordChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
 
-        this.wordChooser     = WordChooser.getInstance(getActivity(), lessonNumber);
-        this.nativeFragment  = NativeWordFragment.newInstance(this.wordChooser);
-        this.foreignFragment = ForeignWordFragment.newInstance(this.wordChooser);
+        Intent intent = getActivity().getIntent();
+        Lesson lesson = LessonListFragment.selectedLesson(intent);
+
+        if(lesson != null)
+        {
+            Log.d(TAG, "new lesson found");
+            lesson.activateLesson(getActivity(), wordChooser);
+        }
+
+        this.topFragment    = TopCardFragment.newInstance(this.wordChooser);
+        this.bottomFragment = BottomCardFragment.newInstance(this.wordChooser);
 
         this.wordContainer = (FrameLayout)layout.findViewById(R.id.fragment_word_container);
         this.wordContainer.setOnClickListener(new View.OnClickListener()
@@ -77,7 +97,7 @@ public class FlashFragment extends Fragment
             @Override
             public void onClick(View view)
             {
-                switchLanguage();
+                flipCard();
             }
         });
 
@@ -91,26 +111,12 @@ public class FlashFragment extends Fragment
             }
         });
 
-        this.flipButton = (Button)layout.findViewById(R.id.flip_button);
-        this.flipButton.setOnClickListener(new View.OnClickListener()
+        playButton = (ImageButton)layout.findViewById(R.id.play_button);
+        playButton.setOnClickListener(new View.OnClickListener()
         {
-            @Override
-            public void onClick(View view)
+            public void onClick(View v)
             {
-                isSwitched = !isSwitched;
-
-                if(isSwitched)
-                {
-                    view.setBackgroundColor(getResources().getColor(R.color.secondary_color));
-                    isNativeShown = false;
-                    switchLanguage();
-                }
-                else
-                {
-                    view.setBackgroundColor(getResources().getColor(R.color.primary_color));
-                    isNativeShown = true;
-                    switchLanguage();
-                }
+                playAudio();
             }
         });
 
@@ -146,35 +152,95 @@ public class FlashFragment extends Fragment
             }
         });
 
-        addChildFragment(this.foreignFragment);
+        addChildFragment(this.bottomFragment);
         displayWordData(this.wordChooser.getCurrentWord());
         updateProgress();
 
         return layout;
     }
 
+
+
     @Override
-    public void onPause()
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
-        super.onPause();
-        this.wordChooser.saveWords(getActivity());
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.question, menu);
     }
 
     @Override
-    public void onResume()
+    public boolean onOptionsItemSelected(MenuItem item)
     {
-        super.onResume();
-        displayWordData(this.wordChooser.getCurrentWord());
-        updateProgress();
+        boolean isCompleted = true;
+
+        switch(item.getItemId())
+        {
+            case R.id.menu_item_reverse_card:
+                Log.d(TAG, "menu_item_reverse_card clicked.");
+                isSwitched = !isSwitched;
+
+                if(isSwitched)
+                {
+                    isTopShown = false;
+                    flipCard();
+                }
+                else
+                {
+                    isTopShown = true;
+                    flipCard();
+                }
+
+                isCompleted = true;
+                break;
+
+            case R.id.menu_item_choose_lesson:
+                Log.d(TAG, "menu_item_choose_lesson clicked.");
+                updateProgress();
+                Intent intent = new Intent(getActivity(), LessonListActivity.class);
+                startActivity(intent);
+                isCompleted = true;
+                break;
+
+            case R.id.menu_item_auto_run:
+                Log.d(TAG, "menu_item_auto_run clicked.");
+                isAutoRun = !isAutoRun;
+                item.setChecked(isAutoRun);
+
+                //wait for the existing thread to stop via the flag change.
+                try
+                {
+                    if(this.autoRunThread != null && this.autoRunThread.isAlive())
+                        this.autoRunThread.join();
+                }
+                catch(InterruptedException e)
+                {
+                    Log.d(TAG, "autoRunThread InterruptedException." + e);
+                    this.autoRunThread = null;
+                }
+
+                //start a new thread if required
+                if(isAutoRun)
+                {
+                    this.autoRunThread = new Thread(new AutoRun());
+                    this.autoRunThread.start();
+                }
+
+                break;
+
+            default:
+                isCompleted = super.onOptionsItemSelected(item);
+        }
+
+        return isCompleted;
     }
 
     private void displayWordData(Word word)
     {
-        if((this.isNativeShown && !this.isSwitched) || (!this.isNativeShown && this.isSwitched))
-            switchLanguage();
+        if((this.isTopShown && !this.isSwitched) || (!this.isTopShown && this.isSwitched))
+            flipCard();
 
-        this.nativeFragment.assignWord(word);
-        this.foreignFragment.assignWord(word);
+        this.topFragment.assignWord(word);
+        this.bottomFragment.assignWord(word);
 
         if(word.isHigh())
             this.repetitionChoice.check(R.id.highChoice);
@@ -217,33 +283,46 @@ public class FlashFragment extends Fragment
         this.neverTotalView.setText(this.wordChooser.neverTotal());
     }
 
-    //switches between foreign and native word
-    private void switchLanguage()
+    private void playAudio()
     {
-        this.isNativeShown = !this.isNativeShown;
+        Word currentWord   = this.wordChooser.getCurrentWord();
+
+        if(this.isTopShown)
+            currentWord.nativeAudio(getActivity(), this.audioPlayer);
+        else
+            currentWord.foreignAudio(getActivity(), this.audioPlayer);
+
+    }
+
+    //reveals the answer
+    private void flipCard()
+    {
+        this.isTopShown = !this.isTopShown;
 
         FragmentManager fm              = getFragmentManager();
         FragmentTransaction transaction = fm.beginTransaction();
 
-        if(this.isNativeShown)
+        if(this.isTopShown)
         {
             transaction.setCustomAnimations(
                     R.animator.card_flip_left_in, R.animator.card_flip_left_out,
                     R.animator.card_flip_right_in, R.animator.card_flip_right_out);
-            transaction.remove(this.foreignFragment);
-            transaction.remove(this.nativeFragment);
-            transaction.add(R.id.fragment_word_container, this.nativeFragment);
+            transaction.remove(this.bottomFragment);
+            transaction.remove(this.topFragment);
+            transaction.add(R.id.fragment_word_container, this.topFragment);
             transaction.commit();
+
         }
         else
         {
             transaction.setCustomAnimations(
                     R.animator.card_flip_right_in, R.animator.card_flip_right_out,
                     R.animator.card_flip_left_in, R.animator.card_flip_left_out);
-            transaction.remove(this.foreignFragment);
-            transaction.remove(this.nativeFragment);
-            transaction.add(R.id.fragment_word_container, this.foreignFragment);
+            transaction.remove(this.bottomFragment);
+            transaction.remove(this.topFragment);
+            transaction.add(R.id.fragment_word_container, this.bottomFragment);
             transaction.commit();
+
         }
     }
 
@@ -262,15 +341,15 @@ public class FlashFragment extends Fragment
         }
     }
 
-    public static class ForeignWordFragment extends Fragment
+    public static class BottomCardFragment extends Fragment
     {
-        private static final String WORD_CHOOSER = "ForeignWordFragment";
+        private static final String WORD_CHOOSER = "BottomCardFragment";
         private TextView foreignWordView;
         private WordChooser wordChooser;
 
-        public static final ForeignWordFragment newInstance(WordChooser wordChooser)
+        public static final BottomCardFragment newInstance(WordChooser wordChooser)
         {
-            ForeignWordFragment instance = new ForeignWordFragment();
+            BottomCardFragment instance = new BottomCardFragment();
             Bundle bundle                = new Bundle(1);
             bundle.putSerializable(WORD_CHOOSER, wordChooser);
             instance.setArguments(bundle);
@@ -303,15 +382,15 @@ public class FlashFragment extends Fragment
         }
     }
 
-    public static class NativeWordFragment extends Fragment
+    public static class TopCardFragment extends Fragment
     {
         private TextView nativeWordView;
         private WordChooser wordChooser;
-        private static final String WORD_CHOOSER = "NativeWordFragment";
+        private static final String WORD_CHOOSER = "TopCardFragment";
 
-        public static final NativeWordFragment newInstance(WordChooser wordChooser)
+        public static final TopCardFragment newInstance(WordChooser wordChooser)
         {
-            NativeWordFragment instance = new NativeWordFragment();
+            TopCardFragment instance = new TopCardFragment();
             Bundle bundle               = new Bundle(1);
             bundle.putSerializable(WORD_CHOOSER, wordChooser);
             instance.setArguments(bundle);
@@ -344,27 +423,175 @@ public class FlashFragment extends Fragment
         }
     }
 
-    private class LessonSpinnerListener implements AdapterView.OnItemSelectedListener
+    /*************************************************************
+     * Listener class for touch event on the flash card
+     *************************************************/
+    public class FlashTouchListener implements View.OnTouchListener
     {
-        public LessonSpinnerListener()
+        private static final String TAG = "TouchListener";
+
+        private VelocityTracker velocityTracker;
+
+        public boolean onTouch(View view, MotionEvent event)
         {
+            int index        = event.getActionIndex();
+            int action       = event.getActionMasked();
+            int pointerId    = event.getPointerId(index);
+            boolean isActive = true;
+
+            switch(action)
+            {
+                case MotionEvent.ACTION_DOWN:
+                {
+                    if(velocityTracker == null)
+                        velocityTracker = VelocityTracker.obtain();
+                    else
+                        velocityTracker.clear();
+
+                    velocityTracker.addMovement(event);
+                    break;
+                }
+
+                case MotionEvent.ACTION_MOVE:
+                {
+                    velocityTracker.addMovement(event);
+                    velocityTracker.computeCurrentVelocity(1000);
+                    float velocity = VelocityTrackerCompat.getXVelocity(velocityTracker, pointerId);
+
+                    Log.d(TAG, "X velocity: " + velocity);
+
+                    //fling left
+                    if(velocity < -8000)
+                    {
+                        Log.d(TAG, "fling left");
+
+                        displayWordData(wordChooser.getNextWord());
+                        isActive = false;
+                    }
+
+                    //fling right
+                    else if (velocity > 8000)
+                    {
+                        Log.d(TAG, "fling right");
+
+                        displayWordData(wordChooser.getPreviousWord());
+                        isActive = false;
+                    }
+
+                    break;
+                }
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                {
+                    //return a velocity tracker object back to be re-used by others
+                    velocityTracker.recycle();
+                    velocityTracker = null;
+                    break;
+                }
+            }
+
+            return isActive;
+        }
+    }
+
+    /*************************************************************
+     * Listener class for the auto run thread
+     *************************************************/
+    private class AutoRun implements Runnable
+    {
+        public void run()
+        {
+            try
+            {
+                while(isActive())
+                {
+                    autoRunThread.sleep(4000);
+
+                    //android requires that view objects can only be modified by the thread that originally created it
+                    getActivity().runOnUiThread(new Runnable()
+                    {
+                        public void run()
+                        {
+                            flipCard();
+                        }
+
+                    });
+
+                    if(isActive())
+                    {
+                        autoRunThread.sleep(2000);
+
+                        getActivity().runOnUiThread(new Runnable()
+                        {
+                            public void run()
+                            {
+                                flipCard();
+                                displayWordData(wordChooser.getNextWord());
+                            }
+                        });
+                    }
+                }
+
+                //show top card if auto run stopped
+                if(!isTopShown || isSwitched)
+                {
+                    //android requires that view objects can only be modified by the thread that originally created it
+                    getActivity().runOnUiThread(new Runnable()
+                    {
+                        public void run()
+                        {
+                            flipCard();
+                        }
+
+                    });
+                }
+            }
+            catch(Exception e)
+            {
+                Log.d(TAG, "AutoRun stopped unexpectedly: " + e);
+            }
         }
 
-        //implementation of listener for the spinner
-        public void onItemSelected(AdapterView<?> parent, View view, int pos, long id)
+        private boolean isActive()
         {
-            Log.d(TAG, "  pos:" + pos);
-            int lessonNumber = pos + 1;
+            return (isAutoRun && autoRunThread != null && autoRunThread.isAlive());
+        }
+    }
 
-            wordChooser.loadLesson(getActivity(), lessonNumber);
-            displayWordData(wordChooser.getCurrentWord());
-            updateProgress();
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        isAutoRun = false;
+
+        try
+        {
+            if (autoRunThread != null)
+                autoRunThread.join();
+        }
+        catch(InterruptedException e)
+        {
+            Log.d(TAG, "onDestroy autoRunThread InterruptedException." + e);
+            this.autoRunThread = null;
         }
 
-        //implementation of listener for the spinner
-        public void onNothingSelected(AdapterView<?> parent)
-        {
-            //do nothing
-        }
+        this.wordChooser.saveWords(getActivity());
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        displayWordData(this.wordChooser.getCurrentWord());
+        updateProgress();
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        super.onDestroy();
+
+        audioPlayer.stop();
     }
 }

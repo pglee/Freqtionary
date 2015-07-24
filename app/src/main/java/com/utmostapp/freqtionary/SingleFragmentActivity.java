@@ -10,6 +10,7 @@ import com.utmostapp.freqtionary.R;
 
 /**
  * Created by plee on 9/19/14.
+ * Allows a Fragment to be substituted for an Activity
  */
 public abstract class SingleFragmentActivity extends Activity
 {
@@ -23,29 +24,18 @@ public abstract class SingleFragmentActivity extends Activity
 
         setContentView(R.layout.activity_fragment);
 
-        FragmentManager fm = getFragmentManager();
+        FragmentManager fragmentManager = getFragmentManager();
 
         //fragmentContainer is defined in activity_fragment.xml layout
-        Fragment fragment  = fm.findFragmentById(R.id.fragmentContainer);
+        Fragment fragment = fragmentManager.findFragmentById(R.id.fragmentContainer);
 
         //add a fragment to this activity if it wasn't already
         if(fragment == null)
         {
+            //call child factory - abstract method defined above
             fragment = createFragment();
-            fm.beginTransaction().add(R.id.fragmentContainer, fragment).commit();
+            fragmentManager.beginTransaction().add(R.id.fragmentContainer, fragment).commit();
         }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item)
-    {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 }

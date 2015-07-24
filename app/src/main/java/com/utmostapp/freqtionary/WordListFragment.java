@@ -18,6 +18,8 @@ import java.util.ArrayList;
 public class WordListFragment extends ListFragment
 {
     private static final String TAG    = "WordListFragment";
+    private static final String DEFAULT_LESSON_FILE = "lesson1.json";
+
     private static final int HIGH_POS  = 0;
     private static final int MED_POS   = 1;
     private static final int LOW_POS   = 2;
@@ -29,7 +31,7 @@ public class WordListFragment extends ListFragment
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        this.wordChooser         = WordChooser.getInstance(getActivity(), 1);
+        this.wordChooser         = WordChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
         WordArrayAdapter adapter = new WordArrayAdapter(this.wordChooser.getMasterList());
 
         setListAdapter(adapter);
@@ -92,7 +94,6 @@ public class WordListFragment extends ListFragment
             else
                 repSpinner.setSelection(HIGH_POS);
         }
-
     }
 
     private class RepetitionSpinnerListener implements AdapterView.OnItemSelectedListener

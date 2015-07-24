@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="app_name">Freqtionary</string>
     <string name="action_settings">Settings</string>
     <string name="repetition_label">Repetition:</string>
-    <string name="switch_label">Switch</string>
+    <string name="reverse_label">Reverse Top Card</string>
+    <string name="lesson_menu_label">Choose a Lesson</string>
+    <string name="auto_run_menu_label">Auto Run</string>
     <string name="progress_label">Progress:</string>
     <string name="high_label">High</string>
     <string name="medium_label">Med</string>
     <string name="low_label">Low</string>
     <string name="never_label">Never</string>
     <string name="frequency_label">Freq Rank:</string>
-    <string name="prev_label">&lt; Previous</string>
-    <string name="next_label">Next &gt;</string>
+    <string name="prev_label">Previous</string>
+    <string name="next_label">Next</string>
+    <string name="play_label">Audio</string>
     <string name="lesson_complete">Lesson Complete!</string>
+
     <string-array name="repetition_options">
         <item>High</item>
         <item>Med</item>
@@ -23,4 +28,8 @@
         <item>Lesson 1</item>
         <item>Lesson 2</item>
     </string-array>
+
+    <string name="title_activity_lesson_list">LessonListActivity</string>
+    <string name="hello_world">Hello world!</string>
+
 </resources>

@@ -1,5 +1,6 @@
 package com.utmostapp.freqtionary;
 
+import android.content.Context;
 import android.widget.TextView;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -45,15 +46,6 @@ public class Word implements Serializable
         this.repetition  = repetition;
     }
 
-    public Word(int rank, String nativeText, String foreignText)
-    {
-        this.rank        = rank;
-        this.nativeText  = nativeText;
-        this.foreignText = foreignText;
-        this.repetition  = HIGH;
-    }
-
-
     public JSONObject toJSON() throws JSONException
     {
         JSONObject json = new JSONObject();
@@ -64,6 +56,16 @@ public class Word implements Serializable
         json.put(REPETITION, Integer.toString(repetition));
 
         return json;
+    }
+
+    public void nativeAudio(Context context, AudioPlayer player)
+    {
+        player.play(context, "test1.mp3");
+    }
+
+    public void foreignAudio(Context context, AudioPlayer player)
+    {
+        player.play(context, "test2.mp3");
     }
 
     public void setHigh()

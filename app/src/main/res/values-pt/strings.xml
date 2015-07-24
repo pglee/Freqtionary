@@ -3,7 +3,7 @@
     <string name="app_name">Frequênciário</string>
     <string name="action_settings">Configurações</string>
     <string name="repetition_label">Repetição:</string>
-    <string name="switch_label">Mudar</string>
+    <string name="reverse_label">Mudar</string>
     <string name="progress_label">Progresso:</string>
     <string name="high_label">Altura</string>
     <string name="medium_label">Méd</string>

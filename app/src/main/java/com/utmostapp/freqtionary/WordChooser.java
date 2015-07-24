@@ -13,9 +13,7 @@ import java.util.List;
  */
 public class WordChooser implements Serializable
 {
-    private static final int LIST_TOTAL     = 10;
-    private static final String TAG         = "WordChooser";
-    private static final String FILE_PREFIX = "lesson";
+    private static final String TAG = "WordChooser";
 
     private static WordChooser singleton;
 
@@ -31,47 +29,43 @@ public class WordChooser implements Serializable
     private String fileName;
     private Word lessonComplete;
 
-    private WordChooser(Context context, int lessonNumber)
+    private WordChooser(Context context, String newFileName)
     {
-        loadLesson(context, lessonNumber);
+        loadLesson(context, newFileName);
 
         this.lessonComplete = new Word(0, context.getResources().getString(R.string.lesson_complete), "Lesson Complete!", Word.NEVER);
 
     }
 
     //factory method
-    public static WordChooser getInstance(Context context, int lessonNumber)
+    public static WordChooser getInstance(Context context, String newFileName)
     {
         if(singleton == null)
-            singleton = new WordChooser(context, lessonNumber);
+        {
+            Log.d(TAG, "Creating a new instance of WordChooser. " + newFileName);
+            singleton = new WordChooser(context, newFileName);
+        }
 
         return singleton;
     }
 
     //loads the lesson from the file system either from the sandbox if saved before or from the raw resource
-    public void loadLesson(Context context, int lessonNumber)
+    public void loadLesson(Context context, String newFileName)
     {
         saveWords(context);
-
-        if(lessonNumber < 1 && lessonNumber > 2)
-            lessonNumber = 1;
-
         ArrayList<Word> holdList;
-        String holdName;
 
         try
         {
-            holdName       = jsonFileName(lessonNumber);
-            Log.d(TAG, "holdName " + holdName);
+            Log.d(TAG, "newFileName " + newFileName);
 
-            int resourceId = context.getResources().getIdentifier(resourceName(lessonNumber), "raw", context.getPackageName());
-            Log.d(TAG, "resourceId " + resourceId + " real Id " + R.raw.lesson1);
-            holdList       = WordJSONSerializer.loadWords(context, holdName, resourceId);
-            Log.d(TAG, "holdList " + holdList.size());
+            int resourceId = context.getResources().getIdentifier(resourceName(newFileName), "raw", context.getPackageName());
+            holdList       = WordJSONSerializer.loadWords(context, newFileName, resourceId);
+
             loadLists(holdList);
 
             this.masterList = holdList;
-            this.fileName   = holdName;
+            this.fileName   = newFileName;
 
             this.historyIndex   = 0;
             this.newWordCounter = 0;
@@ -95,7 +89,7 @@ public class WordChooser implements Serializable
             try
             {
                 WordJSONSerializer.saveWords(context, this.fileName, this.masterList);
-                Log.d(TAG, "Crimes saved to file.");
+                Log.d(TAG, "Words saved to file.");
                 isOkay = true;
             } catch (Exception e)
             {
@@ -109,14 +103,12 @@ public class WordChooser implements Serializable
         return isOkay;
     }
 
-    private String jsonFileName(int lessonNumber)
+    private String resourceName(String fileName)
     {
-        return resourceName(lessonNumber) + ".json";
-    }
+        String resourceName = fileName.substring(0, fileName.lastIndexOf('.'));
 
-    private String resourceName(int lessonNumber)
-    {
-        return FILE_PREFIX + lessonNumber;
+        Log.d(TAG, "resourceName: "  + resourceName);
+        return resourceName;
     }
 
     public String highTotal()

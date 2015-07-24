@@ -21,6 +21,7 @@ import java.io.Writer;
 import java.util.ArrayList;
 
 /**
+ * Loads and saves words from properly formatted JSON files
  * Created by plee on 10/24/14.
  */
 public class WordJSONSerializer implements Serializable
@@ -38,6 +39,7 @@ public class WordJSONSerializer implements Serializable
     {
         ArrayList<Word> crimes = new ArrayList<Word>();
         BufferedReader reader   = null;
+
 
         try
         {
@@ -84,17 +86,18 @@ public class WordJSONSerializer implements Serializable
     private static InputStream getFileStream(Context context, String fileName, int resourceId) throws Resources.NotFoundException
     {
         InputStream inputStream;
+        Log.d(TAG, "getFileStream fileName: " + fileName + " resourceId " + resourceId);
 
         try
         {
             inputStream = context.openFileInput(fileName);
-            Log.d(TAG, "JSON data loaded from sandbox.");
+            Log.d(TAG, "JSON data loaded from sandbox. " + fileName);
         }
         catch(FileNotFoundException e)
         {
             Log.d(TAG, "Sandbox file not found. Assuming initial load. Getting data from res directory.");
             inputStream = context.getResources().openRawResource(resourceId);
-            Log.d(TAG, "JSON data loaded from resource.");
+            Log.d(TAG, "JSON data loaded from resource." + resourceId);
         }
 
         return inputStream;
