@@ -62,8 +62,8 @@ public class WordListFragment extends ListFragment
             Spinner repSpinner     = (Spinner)view.findViewById(R.id.repetition_spinner);
 
             word.assignRankText(rank);
-            word.assignForeignText(primaryWord);
-            word.assignNativeText(secondaryWord);
+            word.assignTopText(primaryWord);
+            word.assignBottomText(secondaryWord);
             setSpinner(repSpinner, word);
 
             RepetitionSpinnerListener listener = new RepetitionSpinnerListener(word);

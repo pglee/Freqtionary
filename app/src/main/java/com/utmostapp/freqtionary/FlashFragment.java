@@ -1,22 +1,19 @@
 package com.utmostapp.freqtionary;
 
+import android.animation.Animator;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
-import android.app.ListActivity;
-import android.content.Context;
 import android.content.Intent;
 import android.support.v4.view.VelocityTrackerCompat;
-import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
-import android.widget.AdapterView;
+import android.view.animation.Animation;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TextView;
 import android.os.Bundle;
@@ -47,13 +44,12 @@ public class FlashFragment extends Fragment
     private Button previousButton;
     private Button nextButton;
     private FrameLayout wordContainer;
-    private TopCardFragment topFragment;
-    private BottomCardFragment bottomFragment;
+    private Fragment topFragment;
+    private Fragment bottomFragment;
     private AudioPlayer audioPlayer = new AudioPlayer();
     private Thread autoRunThread;
 
     private boolean isAutoRun;
-    private boolean isSwitched;
     private boolean isTopShown;
 
     @Override
@@ -152,14 +148,12 @@ public class FlashFragment extends Fragment
             }
         });
 
-        addChildFragment(this.bottomFragment);
+        addChildFragment(this.topFragment);
         displayWordData(this.wordChooser.getCurrentWord());
         updateProgress();
 
         return layout;
     }
-
-
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
@@ -177,18 +171,13 @@ public class FlashFragment extends Fragment
         {
             case R.id.menu_item_reverse_card:
                 Log.d(TAG, "menu_item_reverse_card clicked.");
-                isSwitched = !isSwitched;
+                Fragment hold       = this.topFragment;
+                this.topFragment    = this.bottomFragment;
+                this.bottomFragment = hold;
+                this.isTopShown     = !this.isTopShown;
+                item.setChecked(!item.isChecked());
 
-                if(isSwitched)
-                {
-                    isTopShown = false;
-                    flipCard();
-                }
-                else
-                {
-                    isTopShown = true;
-                    flipCard();
-                }
+                flipCard();
 
                 isCompleted = true;
                 break;
@@ -225,6 +214,7 @@ public class FlashFragment extends Fragment
                     this.autoRunThread.start();
                 }
 
+                isCompleted = true;
                 break;
 
             default:
@@ -236,11 +226,10 @@ public class FlashFragment extends Fragment
 
     private void displayWordData(Word word)
     {
-        if((this.isTopShown && !this.isSwitched) || (!this.isTopShown && this.isSwitched))
+        if(!this.isTopShown)
             flipCard();
 
-        this.topFragment.assignWord(word);
-        this.bottomFragment.assignWord(word);
+        ((ICardFragment)this.topFragment).assignWord(word);
 
         if(word.isHigh())
             this.repetitionChoice.check(R.id.highChoice);
@@ -288,41 +277,35 @@ public class FlashFragment extends Fragment
         Word currentWord   = this.wordChooser.getCurrentWord();
 
         if(this.isTopShown)
-            currentWord.nativeAudio(getActivity(), this.audioPlayer);
-        else
             currentWord.foreignAudio(getActivity(), this.audioPlayer);
-
+        else
+            currentWord.nativeAudio(getActivity(), this.audioPlayer);
     }
 
     //reveals the answer
     private void flipCard()
     {
-        this.isTopShown = !this.isTopShown;
-
         FragmentManager fm              = getFragmentManager();
         FragmentTransaction transaction = fm.beginTransaction();
 
-        if(this.isTopShown)
+        if(!this.isTopShown)
         {
             transaction.setCustomAnimations(
-                    R.animator.card_flip_left_in, R.animator.card_flip_left_out,
-                    R.animator.card_flip_right_in, R.animator.card_flip_right_out);
-            transaction.remove(this.bottomFragment);
-            transaction.remove(this.topFragment);
-            transaction.add(R.id.fragment_word_container, this.topFragment);
+                    R.animator.card_flip_down_in, R.animator.card_flip_down_out);
+
+            transaction.replace(R.id.fragment_word_container, this.topFragment);
             transaction.commit();
 
+            this.isTopShown = true;
         }
         else
         {
             transaction.setCustomAnimations(
-                    R.animator.card_flip_right_in, R.animator.card_flip_right_out,
-                    R.animator.card_flip_left_in, R.animator.card_flip_left_out);
-            transaction.remove(this.bottomFragment);
-            transaction.remove(this.topFragment);
-            transaction.add(R.id.fragment_word_container, this.bottomFragment);
-            transaction.commit();
+                    R.animator.card_flip_up_in, R.animator.card_flip_up_out);
 
+            transaction.replace(R.id.fragment_word_container, this.bottomFragment);
+            transaction.commit();
+            this.isTopShown = false;
         }
     }
 
@@ -341,50 +324,9 @@ public class FlashFragment extends Fragment
         }
     }
 
-    public static class BottomCardFragment extends Fragment
+    public static class TopCardFragment extends Fragment implements ICardFragment
     {
-        private static final String WORD_CHOOSER = "BottomCardFragment";
-        private TextView foreignWordView;
-        private WordChooser wordChooser;
-
-        public static final BottomCardFragment newInstance(WordChooser wordChooser)
-        {
-            BottomCardFragment instance = new BottomCardFragment();
-            Bundle bundle                = new Bundle(1);
-            bundle.putSerializable(WORD_CHOOSER, wordChooser);
-            instance.setArguments(bundle);
-
-            return instance;
-        }
-
-        @Override
-        public void onCreate(Bundle savedInstanceState)
-        {
-            super.onCreate(savedInstanceState);
-            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
-        {
-            View layout          = inflater.inflate(R.layout.fragment_foreign_word, container, false);
-            this.foreignWordView = (TextView)layout.findViewById(R.id.foreign_text);
-
-            assignWord(this.wordChooser.getCurrentWord());
-
-            return layout;
-        }
-
-        private void assignWord(Word word)
-        {
-            if(foreignWordView != null)
-                word.assignForeignText(foreignWordView);
-        }
-    }
-
-    public static class TopCardFragment extends Fragment
-    {
-        private TextView nativeWordView;
+        private TextView textView;
         private WordChooser wordChooser;
         private static final String WORD_CHOOSER = "TopCardFragment";
 
@@ -408,19 +350,65 @@ public class FlashFragment extends Fragment
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
         {
-            View layout          = inflater.inflate(R.layout.fragment_native_word, container, false);
-            this.nativeWordView  = (TextView)layout.findViewById(R.id.native_text);
+            View layout   = inflater.inflate(R.layout.fragment_foreign_word, container, false);
+            this.textView = (TextView)layout.findViewById(R.id.foreign_text);
 
             assignWord(this.wordChooser.getCurrentWord());
 
             return layout;
         }
 
-        private void assignWord(Word  word)
+        public void assignWord(Word  word)
         {
-            if(nativeWordView != null)
-                word.assignNativeText(nativeWordView);
+            if(textView != null)
+                word.assignTopText(textView);
         }
+    }
+
+    public static class BottomCardFragment extends Fragment implements ICardFragment
+    {
+        private static final String WORD_CHOOSER = "BottomCardFragment";
+        private TextView textView;
+        private WordChooser wordChooser;
+
+        public static final BottomCardFragment newInstance(WordChooser wordChooser)
+        {
+            BottomCardFragment instance = new BottomCardFragment();
+            Bundle bundle                = new Bundle(1);
+            bundle.putSerializable(WORD_CHOOSER, wordChooser);
+            instance.setArguments(bundle);
+
+            return instance;
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState)
+        {
+            super.onCreate(savedInstanceState);
+            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
+        }
+
+        @Override
+        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState)
+        {
+            View layout    = inflater.inflate(R.layout.fragment_native_word, container, false);
+            this.textView  = (TextView)layout.findViewById(R.id.native_text);
+
+            assignWord(this.wordChooser.getCurrentWord());
+
+            return layout;
+        }
+
+        public void assignWord(Word word)
+        {
+            if(textView != null)
+                word.assignBottomText(textView);
+        }
+    }
+
+    public interface ICardFragment
+    {
+        public void assignWord(Word word);
     }
 
     /*************************************************************
@@ -506,7 +494,7 @@ public class FlashFragment extends Fragment
             {
                 while(isActive())
                 {
-                    autoRunThread.sleep(4000);
+                    autoRunThread.sleep(3000);
 
                     //android requires that view objects can only be modified by the thread that originally created it
                     getActivity().runOnUiThread(new Runnable()
@@ -515,7 +503,6 @@ public class FlashFragment extends Fragment
                         {
                             flipCard();
                         }
-
                     });
 
                     if(isActive())
@@ -526,7 +513,6 @@ public class FlashFragment extends Fragment
                         {
                             public void run()
                             {
-                                flipCard();
                                 displayWordData(wordChooser.getNextWord());
                             }
                         });
@@ -534,7 +520,7 @@ public class FlashFragment extends Fragment
                 }
 
                 //show top card if auto run stopped
-                if(!isTopShown || isSwitched)
+                if(!isTopShown)
                 {
                     //android requires that view objects can only be modified by the thread that originally created it
                     getActivity().runOnUiThread(new Runnable()
@@ -543,7 +529,6 @@ public class FlashFragment extends Fragment
                         {
                             flipCard();
                         }
-
                     });
                 }
             }

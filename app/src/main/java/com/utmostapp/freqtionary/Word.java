@@ -23,8 +23,8 @@ public class Word implements Serializable
     public static final int NEVER  = -1;
 
     private int rank;
-    private String nativeText;
-    private String foreignText;
+    private String topText;
+    private String bottomText;
     private int repetition;
 
     public Word(JSONObject json) throws JSONException
@@ -35,14 +35,14 @@ public class Word implements Serializable
     @Override
     public String toString()
     {
-        return foreignText + " : " + nativeText + " : " + repetition;
+        return topText + " : " + bottomText + " : " + repetition;
     }
 
-    public Word(int rank, String nativeText, String foreignText, int repetition)
+    public Word(int rank, String bottomText, String topText, int repetition)
     {
         this.rank        = rank;
-        this.nativeText  = nativeText;
-        this.foreignText = foreignText;
+        this.bottomText  = bottomText;
+        this.topText = topText;
         this.repetition  = repetition;
     }
 
@@ -51,8 +51,8 @@ public class Word implements Serializable
         JSONObject json = new JSONObject();
 
         json.put(RANK, Integer.toString(rank));
-        json.put(NATIVE, nativeText);
-        json.put(FOREIGN, foreignText);
+        json.put(NATIVE, bottomText);
+        json.put(FOREIGN, topText);
         json.put(REPETITION, Integer.toString(repetition));
 
         return json;
@@ -108,14 +108,14 @@ public class Word implements Serializable
         return this.repetition == NEVER;
     }
 
-    public void assignForeignText(TextView view)
+    public void assignTopText(TextView view)
     {
-        view.setText(foreignText);
+        view.setText(topText);
     }
 
-    public void assignNativeText(TextView view)
+    public void assignBottomText(TextView view)
     {
-        view.setText(nativeText);
+        view.setText(bottomText);
     }
 
     public void assignRankText(TextView view)

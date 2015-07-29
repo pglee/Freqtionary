@@ -56,5 +56,5 @@
         android:valueTo="1.0"
         android:propertyName="alpha"
         android:startOffset="@integer/card_flip_time_half"
-        android:duration="1" />
+        android:duration="0" />
 </set>

@@ -3,8 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".FlashActivity" >
     <item android:id="@+id/menu_item_reverse_card"
-    android:title="@string/reverse_label"
-    app:showAsAction="never" />
+        android:title="@string/reverse_label"
+        android:checkable="true"
+        app:showAsAction="never" />
     <item android:id="@+id/menu_item_choose_lesson"
         android:title="@string/lesson_menu_label"
         app:showAsAction="never" />
