@@ -26,9 +26,9 @@ public class Lesson implements Serializable
         return "fileName: " + fileName + "\nname: " + name +"\ndescription: " + description;
     }
 
-    public void activateLesson(Context context, WordChooser wordChooser)
+    public void activateLesson(Context context, CardChooser cardChooser)
     {
-        wordChooser.loadLesson(context, this.fileName);
+        cardChooser.loadLesson(context, this.fileName);
     }
 
     /*****************************************************************************

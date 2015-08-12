@@ -25,16 +25,34 @@ public class AudioPlayer
     public void play(Context context, String fileName)
     {
         stop();
-        mPlayer = MediaPlayer.create(context, resourceId(context, fileName));
-        mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener()
-        {
-            public void onCompletion(MediaPlayer mp)
-            {
-                stop();
-            }
-        });
 
-        mPlayer.start();
+        try
+        {
+            mPlayer = MediaPlayer.create(context, resourceId(context, fileName));
+
+            //stop when audio is completed.
+            mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener()
+            {
+                public void onCompletion(MediaPlayer mp)
+                {
+                    stop();
+                }
+            });
+
+            //start only when media player is ready
+            mPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener()
+            {
+                @Override
+                public void onPrepared(MediaPlayer mediaPlayer)
+                {
+                    mediaPlayer.start();
+                }
+            });
+        }
+        catch(Exception e)
+        {
+            Log.d(TAG, "Unable to play the file." + e);
+        }
     }
 
     //gets the resourceId based on the fileName passed of the actual file

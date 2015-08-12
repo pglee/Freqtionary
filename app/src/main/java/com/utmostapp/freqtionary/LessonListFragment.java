@@ -1,20 +1,15 @@
 package com.utmostapp.freqtionary;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.app.ListFragment;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
-
-import com.utmostapp.freqtionary.dummy.DummyContent;
 
 import java.util.ArrayList;
 
@@ -50,11 +45,20 @@ public class LessonListFragment extends ListFragment
     {
         ArrayList<Lesson> list = new ArrayList<Lesson>();
 
-        Lesson lesson1 = new Lesson("lesson1.json", "Capitols", "US State Capitols");
-        Lesson lesson2 = new Lesson("lesson2.json:", "English Lesson1", "10 Most Frequently used English Words");
+        try
+        {
+            list.add(LessonJSONSerializer.getLesson(getActivity(), "lesson1.json"));
+        }
+        catch(Exception e)
+        {
+            Log.d(TAG, "Unable to load lesson.  " + e);
+        }
 
-        list.add(lesson1);
+        Lesson lesson2 = new Lesson("lesson2.json", "English Lesson1", "10 Most Frequently used English Words");
+
         list.add(lesson2);
+
+
 
         return list;
     }

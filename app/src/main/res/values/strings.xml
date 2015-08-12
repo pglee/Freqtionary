@@ -7,6 +7,7 @@
     <string name="reverse_label">Reverse Top Card</string>
     <string name="lesson_menu_label">Choose a Lesson</string>
     <string name="auto_run_menu_label">Auto Run</string>
+    <string name="audio_on_menu_label">Audio On</string>
     <string name="progress_label">Progress:</string>
     <string name="high_label">High</string>
     <string name="medium_label">Med</string>

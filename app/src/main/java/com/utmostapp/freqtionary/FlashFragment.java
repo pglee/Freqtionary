@@ -1,9 +1,9 @@
 package com.utmostapp.freqtionary;
 
-import android.animation.Animator;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.Context;
 import android.content.Intent;
 import android.support.v4.view.VelocityTrackerCompat;
 import android.view.Menu;
@@ -11,9 +11,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
-import android.view.animation.Animation;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.TableLayout;
 import android.widget.TextView;
 import android.os.Bundle;
@@ -32,7 +30,7 @@ public class FlashFragment extends Fragment
     private static final String TAG                 = "FlashFragment";
     private static final String DEFAULT_LESSON_FILE = "lesson1.json";
 
-    private WordChooser wordChooser;
+    private CardChooser cardChooser;
     private TextView highTotalView;
     private TextView medTotalView;
     private TextView lowTotalView;
@@ -40,17 +38,19 @@ public class FlashFragment extends Fragment
     private RadioGroup repetitionChoice;
     private TableLayout progressLayout;
 
-    private ImageButton playButton;
+    //private ImageButton playButton;
     private Button previousButton;
     private Button nextButton;
     private FrameLayout wordContainer;
-    private Fragment topFragment;
-    private Fragment bottomFragment;
+    private Fragment frontFragment;
+    private Fragment backFragment;
     private AudioPlayer audioPlayer = new AudioPlayer();
     private Thread autoRunThread;
 
-    private boolean isAutoRun;
-    private boolean isTopShown;
+    private boolean isAutoRun = false;
+    private boolean isAudioOn = true;
+    private boolean isFrontShown = true;
+    private boolean isReversed = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -73,7 +73,7 @@ public class FlashFragment extends Fragment
         this.medTotalView    = (TextView)layout.findViewById(R.id.medCount);
         this.lowTotalView    = (TextView)layout.findViewById(R.id.lowCount);
         this.neverTotalView  = (TextView)layout.findViewById(R.id.neverCount);
-        this.wordChooser     = WordChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
+        this.cardChooser = CardChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
 
         Intent intent = getActivity().getIntent();
         Lesson lesson = LessonListFragment.selectedLesson(intent);
@@ -81,11 +81,11 @@ public class FlashFragment extends Fragment
         if(lesson != null)
         {
             Log.d(TAG, "new lesson found");
-            lesson.activateLesson(getActivity(), wordChooser);
+            lesson.activateLesson(getActivity(), cardChooser);
         }
 
-        this.topFragment    = TopCardFragment.newInstance(this.wordChooser);
-        this.bottomFragment = BottomCardFragment.newInstance(this.wordChooser);
+        this.frontFragment = FrontCardFragment.newInstance(this.cardChooser);
+        this.backFragment = BackCardFragment.newInstance(this.cardChooser);
 
         this.wordContainer = (FrameLayout)layout.findViewById(R.id.fragment_word_container);
         this.wordContainer.setOnClickListener(new View.OnClickListener()
@@ -103,16 +103,7 @@ public class FlashFragment extends Fragment
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId)
             {
-                handleRadioChanged(wordChooser.getCurrentWord(), group, checkedId);
-            }
-        });
-
-        playButton = (ImageButton)layout.findViewById(R.id.play_button);
-        playButton.setOnClickListener(new View.OnClickListener()
-        {
-            public void onClick(View v)
-            {
-                playAudio();
+                handleRadioChanged(cardChooser.getCurrentCard(), group, checkedId);
             }
         });
 
@@ -122,7 +113,8 @@ public class FlashFragment extends Fragment
             @Override
             public void onClick(View view)
             {
-                displayWordData(wordChooser.getPreviousWord());
+                displayWordData(cardChooser.getPreviousCard());
+                playAudio();
             }
         });
 
@@ -132,7 +124,8 @@ public class FlashFragment extends Fragment
             @Override
             public void onClick(View view)
             {
-                displayWordData(wordChooser.getNextWord());
+                displayWordData(cardChooser.getNextCard());
+                playAudio();
             }
         });
 
@@ -143,14 +136,15 @@ public class FlashFragment extends Fragment
             public void onClick(View view)
             {
                 Log.d(TAG, "Progress layout clicked.");
-                Intent intent = new Intent(getActivity(), WordListActivity.class);
+                Intent intent = new Intent(getActivity(), CardListActivity.class);
                 startActivity(intent);
             }
         });
 
-        addChildFragment(this.topFragment);
-        displayWordData(this.wordChooser.getCurrentWord());
+        addChildFragment(this.frontFragment);
+        displayWordData(this.cardChooser.getCurrentCard());
         updateProgress();
+        playAudio();
 
         return layout;
     }
@@ -159,7 +153,7 @@ public class FlashFragment extends Fragment
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
         super.onCreateOptionsMenu(menu, inflater);
-        inflater.inflate(R.menu.question, menu);
+        inflater.inflate(R.menu.options, menu);
     }
 
     @Override
@@ -171,10 +165,12 @@ public class FlashFragment extends Fragment
         {
             case R.id.menu_item_reverse_card:
                 Log.d(TAG, "menu_item_reverse_card clicked.");
-                Fragment hold       = this.topFragment;
-                this.topFragment    = this.bottomFragment;
-                this.bottomFragment = hold;
-                this.isTopShown     = !this.isTopShown;
+                Fragment hold      = this.frontFragment;
+                this.frontFragment = this.backFragment;
+                this.backFragment  = hold;
+                this.isFrontShown  = !this.isFrontShown;
+                this.isReversed    = !this.isReversed;
+
                 item.setChecked(!item.isChecked());
 
                 flipCard();
@@ -217,6 +213,13 @@ public class FlashFragment extends Fragment
                 isCompleted = true;
                 break;
 
+            case R.id.menu_item_audio_on:
+                isAudioOn = !isAudioOn;
+                item.setChecked(isAudioOn);
+
+                isCompleted = true;
+                break;
+
             default:
                 isCompleted = super.onOptionsItemSelected(item);
         }
@@ -224,41 +227,41 @@ public class FlashFragment extends Fragment
         return isCompleted;
     }
 
-    private void displayWordData(Word word)
+    private void displayWordData(Card card)
     {
-        if(!this.isTopShown)
+        if(!this.isFrontShown)
             flipCard();
 
-        ((ICardFragment)this.topFragment).assignWord(word);
+        ((ICardFragment)this.frontFragment).assignWord(card);
 
-        if(word.isHigh())
+        if(card.isHigh())
             this.repetitionChoice.check(R.id.highChoice);
-        else if(word.isMedium())
+        else if(card.isMedium())
             this.repetitionChoice.check(R.id.mediumChoice);
-        else if(word.isLow())
+        else if(card.isLow())
             this.repetitionChoice.check(R.id.lowChoice);
-        else if(word.isNever())
+        else if(card.isNever())
             this.repetitionChoice.check(R.id.neverChoice);
     }
 
-    public void handleRadioChanged(Word word, RadioGroup group, int checkedId)
+    public void handleRadioChanged(Card card, RadioGroup group, int checkedId)
     {
         switch(checkedId)
         {
             case R.id.highChoice:
-                this.wordChooser.setHighRepetition(word);
+                this.cardChooser.setHighRepetition(card);
                 break;
             case R.id.mediumChoice:
-                this.wordChooser.setMediumRepetition(word);
+                this.cardChooser.setMediumRepetition(card);
                 break;
             case R.id.lowChoice:
-                this.wordChooser.setLowRepetition(word);
+                this.cardChooser.setLowRepetition(card);
                 break;
             case R.id.neverChoice:
-                this.wordChooser.setNeverRepetition(word);
+                this.cardChooser.setNeverRepetition(card);
                 break;
             default:
-                this.wordChooser.setHighRepetition(word);
+                this.cardChooser.setHighRepetition(card);
         }
 
         updateProgress();
@@ -266,20 +269,10 @@ public class FlashFragment extends Fragment
 
     private void updateProgress()
     {
-        this.highTotalView.setText(this.wordChooser.highTotal());
-        this.medTotalView.setText(this.wordChooser.mediumTotal());
-        this.lowTotalView.setText(this.wordChooser.lowTotal());
-        this.neverTotalView.setText(this.wordChooser.neverTotal());
-    }
-
-    private void playAudio()
-    {
-        Word currentWord   = this.wordChooser.getCurrentWord();
-
-        if(this.isTopShown)
-            currentWord.foreignAudio(getActivity(), this.audioPlayer);
-        else
-            currentWord.nativeAudio(getActivity(), this.audioPlayer);
+        this.highTotalView.setText(this.cardChooser.highTotal());
+        this.medTotalView.setText(this.cardChooser.mediumTotal());
+        this.lowTotalView.setText(this.cardChooser.lowTotal());
+        this.neverTotalView.setText(this.cardChooser.neverTotal());
     }
 
     //reveals the answer
@@ -288,24 +281,40 @@ public class FlashFragment extends Fragment
         FragmentManager fm              = getFragmentManager();
         FragmentTransaction transaction = fm.beginTransaction();
 
-        if(!this.isTopShown)
+        if(!this.isFrontShown)
         {
             transaction.setCustomAnimations(
                     R.animator.card_flip_down_in, R.animator.card_flip_down_out);
 
-            transaction.replace(R.id.fragment_word_container, this.topFragment);
+            transaction.replace(R.id.fragment_word_container, this.frontFragment);
             transaction.commit();
-
-            this.isTopShown = true;
+            this.isFrontShown = true;
         }
         else
         {
             transaction.setCustomAnimations(
                     R.animator.card_flip_up_in, R.animator.card_flip_up_out);
 
-            transaction.replace(R.id.fragment_word_container, this.bottomFragment);
+            transaction.replace(R.id.fragment_word_container, this.backFragment);
             transaction.commit();
-            this.isTopShown = false;
+            this.isFrontShown = false;
+        }
+
+        playAudio();
+    }
+
+    private void playAudio()
+    {
+        if(this.isAudioOn)
+        {
+            ICardFragment currentFragment;
+
+            if(this.isFrontShown)
+                currentFragment = ((ICardFragment)this.frontFragment);
+            else
+                currentFragment = ((ICardFragment)this.backFragment);
+
+            currentFragment.playAudio(getActivity(), this.cardChooser.getCurrentCard(), this.audioPlayer);
         }
     }
 
@@ -324,17 +333,17 @@ public class FlashFragment extends Fragment
         }
     }
 
-    public static class TopCardFragment extends Fragment implements ICardFragment
+    public static class FrontCardFragment extends Fragment implements ICardFragment
     {
         private TextView textView;
-        private WordChooser wordChooser;
-        private static final String WORD_CHOOSER = "TopCardFragment";
+        private CardChooser cardChooser;
+        private static final String WORD_CHOOSER = "FrontCardFragment";
 
-        public static final TopCardFragment newInstance(WordChooser wordChooser)
+        public static final FrontCardFragment newInstance(CardChooser cardChooser)
         {
-            TopCardFragment instance = new TopCardFragment();
+            FrontCardFragment instance = new FrontCardFragment();
             Bundle bundle               = new Bundle(1);
-            bundle.putSerializable(WORD_CHOOSER, wordChooser);
+            bundle.putSerializable(WORD_CHOOSER, cardChooser);
             instance.setArguments(bundle);
 
             return instance;
@@ -344,7 +353,7 @@ public class FlashFragment extends Fragment
         public void onCreate(Bundle savedInstanceState)
         {
             super.onCreate(savedInstanceState);
-            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
+            this.cardChooser = (CardChooser)getArguments().getSerializable(WORD_CHOOSER);
         }
 
         @Override
@@ -353,29 +362,34 @@ public class FlashFragment extends Fragment
             View layout   = inflater.inflate(R.layout.fragment_foreign_word, container, false);
             this.textView = (TextView)layout.findViewById(R.id.foreign_text);
 
-            assignWord(this.wordChooser.getCurrentWord());
+            assignWord(this.cardChooser.getCurrentCard());
 
             return layout;
         }
 
-        public void assignWord(Word  word)
+        public void assignWord(Card card)
         {
             if(textView != null)
-                word.assignTopText(textView);
+                card.assignTopText(textView);
+        }
+
+        public void playAudio(Context context, Card currentCard, AudioPlayer audioPlayer)
+        {
+            currentCard.frontAudio(context, audioPlayer);
         }
     }
 
-    public static class BottomCardFragment extends Fragment implements ICardFragment
+    public static class BackCardFragment extends Fragment implements ICardFragment
     {
-        private static final String WORD_CHOOSER = "BottomCardFragment";
+        private static final String WORD_CHOOSER = "BackCardFragment";
         private TextView textView;
-        private WordChooser wordChooser;
+        private CardChooser cardChooser;
 
-        public static final BottomCardFragment newInstance(WordChooser wordChooser)
+        public static final BackCardFragment newInstance(CardChooser cardChooser)
         {
-            BottomCardFragment instance = new BottomCardFragment();
+            BackCardFragment instance = new BackCardFragment();
             Bundle bundle                = new Bundle(1);
-            bundle.putSerializable(WORD_CHOOSER, wordChooser);
+            bundle.putSerializable(WORD_CHOOSER, cardChooser);
             instance.setArguments(bundle);
 
             return instance;
@@ -385,7 +399,7 @@ public class FlashFragment extends Fragment
         public void onCreate(Bundle savedInstanceState)
         {
             super.onCreate(savedInstanceState);
-            this.wordChooser = (WordChooser)getArguments().getSerializable(WORD_CHOOSER);
+            this.cardChooser = (CardChooser)getArguments().getSerializable(WORD_CHOOSER);
         }
 
         @Override
@@ -394,21 +408,27 @@ public class FlashFragment extends Fragment
             View layout    = inflater.inflate(R.layout.fragment_native_word, container, false);
             this.textView  = (TextView)layout.findViewById(R.id.native_text);
 
-            assignWord(this.wordChooser.getCurrentWord());
+            assignWord(this.cardChooser.getCurrentCard());
 
             return layout;
         }
 
-        public void assignWord(Word word)
+        public void assignWord(Card card)
         {
             if(textView != null)
-                word.assignBottomText(textView);
+                card.assignBottomText(textView);
+        }
+
+        public void playAudio(Context context, Card currentCard, AudioPlayer audioPlayer)
+        {
+            currentCard.backAudio(context, audioPlayer);
         }
     }
 
     public interface ICardFragment
     {
-        public void assignWord(Word word);
+        public void assignWord(Card card);
+        public void playAudio(Context context, Card currentCard, AudioPlayer audioPlayer);
     }
 
     /*************************************************************
@@ -453,7 +473,7 @@ public class FlashFragment extends Fragment
                     {
                         Log.d(TAG, "fling left");
 
-                        displayWordData(wordChooser.getNextWord());
+                        displayWordData(cardChooser.getNextCard());
                         isActive = false;
                     }
 
@@ -462,7 +482,7 @@ public class FlashFragment extends Fragment
                     {
                         Log.d(TAG, "fling right");
 
-                        displayWordData(wordChooser.getPreviousWord());
+                        displayWordData(cardChooser.getPreviousCard());
                         isActive = false;
                     }
 
@@ -513,14 +533,14 @@ public class FlashFragment extends Fragment
                         {
                             public void run()
                             {
-                                displayWordData(wordChooser.getNextWord());
+                                displayWordData(cardChooser.getNextCard());
                             }
                         });
                     }
                 }
 
                 //show top card if auto run stopped
-                if(!isTopShown)
+                if(!isFrontShown)
                 {
                     //android requires that view objects can only be modified by the thread that originally created it
                     getActivity().runOnUiThread(new Runnable()
@@ -561,14 +581,14 @@ public class FlashFragment extends Fragment
             this.autoRunThread = null;
         }
 
-        this.wordChooser.saveWords(getActivity());
+        this.cardChooser.saveCards(getActivity());
     }
 
     @Override
     public void onResume()
     {
         super.onResume();
-        displayWordData(this.wordChooser.getCurrentWord());
+        displayWordData(this.cardChooser.getCurrentCard());
         updateProgress();
     }
 
