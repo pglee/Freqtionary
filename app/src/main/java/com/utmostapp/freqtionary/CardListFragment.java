@@ -19,6 +19,7 @@ public class CardListFragment extends ListFragment
 {
     private static final String TAG                 = "CardListFragment";
     private static final String DEFAULT_LESSON_FILE = "lesson1.json";
+    private static final String CARD_CHOOSER_TAG    = "lesson1.json";
 
     private static final int HIGH_POS  = 0;
     private static final int MED_POS   = 1;
@@ -31,10 +32,22 @@ public class CardListFragment extends ListFragment
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        this.cardChooser = CardChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
+        this.cardChooser         = (CardChooser)getArguments().getSerializable(CARD_CHOOSER_TAG);
         WordArrayAdapter adapter = new WordArrayAdapter(this.cardChooser.getMasterList());
 
         setListAdapter(adapter);
+    }
+
+    //Factory method
+    public static CardListFragment newInstance(CardChooser cardChooser)
+    {
+        Bundle args = new Bundle();
+        args.putSerializable(CARD_CHOOSER_TAG, cardChooser);
+
+        CardListFragment fragment = new CardListFragment();
+        fragment.setArguments(args);
+
+        return fragment;
     }
 
     //Builds the custom view for the fragment by populating individual items

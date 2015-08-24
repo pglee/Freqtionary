@@ -27,30 +27,33 @@ public class CardChooser implements Serializable
     private String fileName;
     private Card lessonComplete;
 
-    private CardChooser(Context context, String newFileName)
+    private CardChooser(Context context, Lesson prevLesson, String newFileName)
     {
-        loadLesson(context, newFileName);
+        loadLesson(context, prevLesson, newFileName);
 
         this.lessonComplete = new Card(0, context.getResources().getString(R.string.lesson_complete), "Lesson Complete!", Card.NEVER);
 
     }
 
     //factory method
-    public static CardChooser getInstance(Context context, String newFileName)
+    public static CardChooser getInstance(Context context, Lesson prevLesson, String newFileName)
     {
         if(singleton == null)
         {
             Log.d(TAG, "Creating a new instance of CardChooser. " + newFileName);
-            singleton = new CardChooser(context, newFileName);
+            singleton = new CardChooser(context, prevLesson, newFileName);
         }
 
         return singleton;
     }
 
     //loads the lesson from the file system either from the sandbox if saved before or from the raw resource
-    public void loadLesson(Context context, String newFileName)
+    public void loadLesson(Context context, Lesson prevLesson, String newFileName)
     {
-        saveCards(context);
+        Log.d(TAG, "loadLesson. Saving cards " + prevLesson);
+
+        saveCards(context, prevLesson);
+
         ArrayList<Card> holdList;
 
         try
@@ -78,15 +81,17 @@ public class CardChooser implements Serializable
     }
 
     //save words to the sandbox
-    public boolean saveCards(Context context)
+    public boolean saveCards(Context context, Lesson lesson)
     {
         boolean isOkay;
 
-        if(this.fileName != null && this.fileName.length() > 0)
+        if(lesson != null && this.fileName != null && this.fileName.length() > 0)
         {
             try
             {
-                LessonJSONSerializer.saveWords(context, this.fileName, this.masterList);
+                Log.d(TAG, "saveCards." + this.fileName + " lesson: " + lesson);
+
+                LessonJSONSerializer.saveLesson(context, lesson, this.fileName, this.masterList);
                 Log.d(TAG, "Words saved to file.");
                 isOkay = true;
             } catch (Exception e)

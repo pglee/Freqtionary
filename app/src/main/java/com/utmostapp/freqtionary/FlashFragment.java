@@ -22,6 +22,8 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.RadioGroup;
 
+import org.json.JSONException;
+
 /**
  * Created by plee on 9/21/14.
  */
@@ -48,9 +50,12 @@ public class FlashFragment extends Fragment
     private Thread autoRunThread;
 
     private boolean isAutoRun = false;
+    private boolean isAutoRunHold = isAutoRun;
     private boolean isAudioOn = true;
     private boolean isFrontShown = true;
     private boolean isReversed = false;
+
+    private Lesson currentLesson;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
@@ -65,7 +70,7 @@ public class FlashFragment extends Fragment
                              Bundle savedInstanceState)
     {
         // Inflate the layout for this fragment
-        View layout          = inflater.inflate(R.layout.fragment_flash, container, false);
+        View layout = inflater.inflate(R.layout.fragment_flash, container, false);
 
         layout.setOnTouchListener(new FlashTouchListener());
 
@@ -73,16 +78,31 @@ public class FlashFragment extends Fragment
         this.medTotalView    = (TextView)layout.findViewById(R.id.medCount);
         this.lowTotalView    = (TextView)layout.findViewById(R.id.lowCount);
         this.neverTotalView  = (TextView)layout.findViewById(R.id.neverCount);
-        this.cardChooser = CardChooser.getInstance(getActivity(), DEFAULT_LESSON_FILE);
+        this.cardChooser     = CardChooser.getInstance(getActivity(), this.currentLesson, DEFAULT_LESSON_FILE);
 
-        Intent intent = getActivity().getIntent();
-        Lesson lesson = LessonListFragment.selectedLesson(intent);
+        Intent intent         = getActivity().getIntent();
+        Lesson selectedLesson = LessonListFragment.selectedLesson(intent);
 
-        if(lesson != null)
+        if(selectedLesson != null)
         {
             Log.d(TAG, "new lesson found");
-            lesson.activateLesson(getActivity(), cardChooser);
+            this.currentLesson = selectedLesson;
         }
+        else if(this.currentLesson == null)
+        {
+            try
+            {
+                this.currentLesson = LessonJSONSerializer.getLesson(getActivity(), DEFAULT_LESSON_FILE);
+            }
+            catch(Exception e)
+            {
+                this.currentLesson = new Lesson(DEFAULT_LESSON_FILE);
+            }
+        }
+
+        Log.d(TAG, "this.currentLesson" + this.currentLesson);
+
+        this.currentLesson.activateLesson(getActivity(), cardChooser);
 
         this.frontFragment = FrontCardFragment.newInstance(this.cardChooser);
         this.backFragment = BackCardFragment.newInstance(this.cardChooser);
@@ -137,6 +157,10 @@ public class FlashFragment extends Fragment
             {
                 Log.d(TAG, "Progress layout clicked.");
                 Intent intent = new Intent(getActivity(), CardListActivity.class);
+
+                //pass the cardChooser to the cardListActivity
+                CardListActivity.addExtra(intent, cardChooser);
+
                 startActivity(intent);
             }
         });
@@ -190,25 +214,7 @@ public class FlashFragment extends Fragment
                 Log.d(TAG, "menu_item_auto_run clicked.");
                 isAutoRun = !isAutoRun;
                 item.setChecked(isAutoRun);
-
-                //wait for the existing thread to stop via the flag change.
-                try
-                {
-                    if(this.autoRunThread != null && this.autoRunThread.isAlive())
-                        this.autoRunThread.join();
-                }
-                catch(InterruptedException e)
-                {
-                    Log.d(TAG, "autoRunThread InterruptedException." + e);
-                    this.autoRunThread = null;
-                }
-
-                //start a new thread if required
-                if(isAutoRun)
-                {
-                    this.autoRunThread = new Thread(new AutoRun());
-                    this.autoRunThread.start();
-                }
+                processAutoRun();
 
                 isCompleted = true;
                 break;
@@ -225,6 +231,28 @@ public class FlashFragment extends Fragment
         }
 
         return isCompleted;
+    }
+
+    private void processAutoRun()
+    {
+        //wait for the existing thread to stop via the flag change.
+        try
+        {
+            if(this.autoRunThread != null && this.autoRunThread.isAlive())
+                this.autoRunThread.join();
+        }
+        catch(InterruptedException e)
+        {
+            Log.d(TAG, "autoRunThread InterruptedException." + e);
+            this.autoRunThread = null;
+        }
+
+        //start a new thread if required
+        if(isAutoRun)
+        {
+            this.autoRunThread = new Thread(new AutoRun());
+            this.autoRunThread.start();
+        }
     }
 
     private void displayWordData(Card card)
@@ -521,7 +549,8 @@ public class FlashFragment extends Fragment
                     {
                         public void run()
                         {
-                            flipCard();
+                            if(isActive())
+                                flipCard();
                         }
                     });
 
@@ -533,7 +562,8 @@ public class FlashFragment extends Fragment
                         {
                             public void run()
                             {
-                                displayWordData(cardChooser.getNextCard());
+                                if(isActive())
+                                    displayWordData(cardChooser.getNextCard());
                             }
                         });
                     }
@@ -568,6 +598,7 @@ public class FlashFragment extends Fragment
     public void onPause()
     {
         super.onPause();
+        isAutoRunHold = isAutoRun;
         isAutoRun = false;
 
         try
@@ -581,7 +612,9 @@ public class FlashFragment extends Fragment
             this.autoRunThread = null;
         }
 
-        this.cardChooser.saveCards(getActivity());
+        Log.d(TAG, "onPause. Saving cards " + this.currentLesson);
+
+        this.cardChooser.saveCards(getActivity(), this.currentLesson);
     }
 
     @Override
@@ -590,6 +623,8 @@ public class FlashFragment extends Fragment
         super.onResume();
         displayWordData(this.cardChooser.getCurrentCard());
         updateProgress();
+        isAutoRun = isAutoRunHold;
+        processAutoRun();
     }
 
     @Override

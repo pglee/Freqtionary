@@ -74,6 +74,7 @@ public class LessonListFragment extends ListFragment
      ************************************************************/
     public void onListItemClick(ListView listView, View view, int position, long id)
     {
+        Log.d(TAG, "onListItemClick " + position );
         Lesson lesson = (Lesson)listView.getItemAtPosition(position);
         Intent intent = new Intent(getActivity(), FlashActivity.class);
 

@@ -34,8 +34,6 @@ public class LessonJSONSerializer implements Serializable
     {
         BufferedReader reader = null;
         Lesson lesson         = null;
-        String name           = fileName;
-        String desc           = fileName;
 
         try
         {
@@ -48,9 +46,9 @@ public class LessonJSONSerializer implements Serializable
             StringBuilder builder = new StringBuilder();
             String line;
 
+            //line breaks are omitted and irrelevant
             while((line = reader.readLine()) != null)
             {
-                //line breaks are omitted and irrelevant
                 builder.append(line);
                 break;
             }
@@ -61,13 +59,9 @@ public class LessonJSONSerializer implements Serializable
                 JSONArray array     = (JSONArray)tokener.nextValue();
                 JSONObject json     = array.getJSONObject(0);
 
-                if(json.length() == 2)
-                {
-                    name = getValue(json, LESSON_NAME);
-                    desc = getValue(json, LESSON_DESC);
-                }
+                lesson = new Lesson(fileName, json);
 
-                Log.d(TAG, "FileName:" + fileName + " Name: " + name + " Desc: " + desc);
+                Log.d(TAG, "first line: " + json);
             }
         }
         catch(Resources.NotFoundException e)
@@ -80,20 +74,9 @@ public class LessonJSONSerializer implements Serializable
                 reader.close();
         }
 
-        return new Lesson(fileName, name, desc);
+        return lesson;
     }
 
-    private static String getValue(JSONObject json, String key) throws JSONException
-    {
-        String value;
-
-        if(!json.isNull(key))
-            value = json.getString(key);
-        else
-            value = null;
-
-        return value;
-    }
 
     private static int resourceId(Context context, String fileName)
     {
@@ -188,10 +171,12 @@ public class LessonJSONSerializer implements Serializable
         return inputStream;
     }
 
-    public static void saveWords(Context context, String fileName, ArrayList<Card> cards) throws JSONException
+    public static void saveLesson(Context context, Lesson lesson, String fileName, ArrayList<Card> cards) throws JSONException
     {
         //Build an array in JSON
         JSONArray array = new JSONArray();
+
+        lesson.addLesson(array);
 
         for(Card card : cards)
         {

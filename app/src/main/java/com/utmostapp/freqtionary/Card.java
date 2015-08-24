@@ -86,24 +86,35 @@ public class Card implements Serializable
     {
         JSONObject json = new JSONObject();
 
-        json.put(RANK, Integer.toString(rank));
-        json.put(BACK_TEXT, backText);
         json.put(FRONT_TEXT, frontText);
+        json.put(BACK_TEXT, backText);
         json.put(REPETITION, Integer.toString(repetition));
+        json.put(RANK, Integer.toString(rank));
+
+        if(isFound(frontAudioFile))
+            json.put(FRONT_AUDIO, frontAudioFile);
+
+        if(isFound(backAudioFile))
+            json.put(BACK_AUDIO, backAudioFile);
 
         return json;
     }
 
     public void frontAudio(Context context, AudioPlayer player)
     {
-        if(frontAudioFile != null && frontAudioFile.length() > 0)
+        if(isFound(frontAudioFile))
             player.play(context, frontAudioFile);
     }
 
     public void backAudio(Context context, AudioPlayer player)
     {
-        if(backAudioFile != null && backAudioFile.length() > 0)
+        if(isFound(backAudioFile))
             player.play(context, backAudioFile);
+    }
+
+    private boolean isFound(String text)
+    {
+        return (text != null && text.trim().length() > 0);
     }
 
     public void setHigh()
