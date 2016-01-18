@@ -30,6 +30,13 @@ public class LessonJSONSerializer implements Serializable
     private static final String LESSON_NAME = "name";
     private static final String LESSON_DESC = "desc";
 
+    /************************************************************************
+     * Retrieves a lesson contained in the given filename. The content of the
+     * filename is assumed to be in the proper JSON format
+     *
+     * @param context Used to get the file that contains the JSON data
+     * @param fileName The file name stored in the app sandbox
+     ************************************************************************/
     public static Lesson getLesson(Context context, String fileName) throws IOException, JSONException
     {
         BufferedReader reader = null;
@@ -77,12 +84,13 @@ public class LessonJSONSerializer implements Serializable
         return lesson;
     }
 
-
+    //helper to get the resource id with the given fileName
     private static int resourceId(Context context, String fileName)
     {
         return context.getResources().getIdentifier(resourceName(fileName), "raw", context.getPackageName());
     }
 
+    //helper to get the resource name with the given fileName
     private static String resourceName(String fileName)
     {
         String resourceName = fileName.substring(0, fileName.lastIndexOf('.'));
@@ -151,6 +159,14 @@ public class LessonJSONSerializer implements Serializable
         return cardList;
     }
 
+    /************************************************************************
+     * Retrieves the filestream used to read the given file
+     *
+     * @param context Used to get the file that contains the JSON data
+     * @param fileName The file name stored in the app sandbox
+     * @param resourceId The resourceId of the file that contains the initial
+     *                   data to be loaded if this the first time loading data.
+     ************************************************************************/
     private static InputStream getFileStream(Context context, String fileName, int resourceId) throws Resources.NotFoundException
     {
         InputStream inputStream;
@@ -170,6 +186,16 @@ public class LessonJSONSerializer implements Serializable
 
         return inputStream;
     }
+
+    /************************************************************************
+     * Saves the lesson as a JSON file with the data stored in the
+     * passed cards
+     *
+     * @param context Used to get the file that contains the JSON data
+     * @param lesson The lesson that the cards will be stored under
+     * @param fileName The file name stored in the app sandbox
+     * @param cards Contains the lesson data that needs to be saved
+     ************************************************************************/
 
     public static void saveLesson(Context context, Lesson lesson, String fileName, ArrayList<Card> cards) throws JSONException
     {

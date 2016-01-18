@@ -25,6 +25,8 @@ import android.widget.RadioGroup;
 import org.json.JSONException;
 
 /**
+ * The controller for the flash card display
+ *
  * Created by plee on 9/21/14.
  */
 public class FlashFragment extends Fragment
@@ -57,6 +59,11 @@ public class FlashFragment extends Fragment
 
     private Lesson currentLesson;
 
+    /************************************************************************
+     * call back when the page is first opened
+     *
+     * @param savedInstanceState used by the super class
+     *************************************************************************/
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
@@ -65,6 +72,13 @@ public class FlashFragment extends Fragment
         setHasOptionsMenu(true);
     }
 
+    /************************************************************************
+     * call back when the page is first opened
+     *
+     * @param inflater builds the display
+     * @param container The view to to display that will contain all the widgets
+     * @param savedInstanceState passed values by the calling object
+     *************************************************************************/
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState)
@@ -173,6 +187,7 @@ public class FlashFragment extends Fragment
         return layout;
     }
 
+    //The call back for creating the options menu
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
@@ -180,6 +195,7 @@ public class FlashFragment extends Fragment
         inflater.inflate(R.menu.options, menu);
     }
 
+    //call back when the user selects an item in the options menu
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
@@ -361,6 +377,9 @@ public class FlashFragment extends Fragment
         }
     }
 
+    /****************************************************************************
+     * The view for the front card
+     *****************************************************************************/
     public static class FrontCardFragment extends Fragment implements ICardFragment
     {
         private TextView textView;
@@ -407,6 +426,9 @@ public class FlashFragment extends Fragment
         }
     }
 
+    /****************************************************************************
+     * The view for the back card
+     *****************************************************************************/
     public static class BackCardFragment extends Fragment implements ICardFragment
     {
         private static final String WORD_CHOOSER = "BackCardFragment";

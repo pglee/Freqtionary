@@ -11,6 +11,8 @@ import org.json.JSONObject;
 import java.io.Serializable;
 
 /**
+ * The lesson information
+ *
  * Created by plee on 6/17/15.
  */
 public class Lesson implements Serializable
@@ -23,7 +25,12 @@ public class Lesson implements Serializable
     private String name;
     private String description;
 
-
+    /*******************************************************************************
+     *
+     * @param fileName The filename that contains the lesson
+     * @param json The object that contains the name and description
+     * @throws JSONException
+     ******************************************************************************/
     public Lesson(String fileName, JSONObject json) throws JSONException
     {
         this.fileName = fileName;
@@ -31,6 +38,10 @@ public class Lesson implements Serializable
         this.description = getValue(json, LESSON_DESC, fileName);
     }
 
+    /*******************************************************************************
+     *
+     * @param fileName The filename that contains the lesson
+     ******************************************************************************/
     public Lesson(String fileName)
     {
         this.fileName    = fileName;
@@ -38,6 +49,12 @@ public class Lesson implements Serializable
         this.description = fileName;
     }
 
+    /*******************************************************************************
+     *
+     * @param fileName The filename that contains the lesson
+     * @param name The name of the lesson
+     * @param description The description of the lesson
+     ******************************************************************************/
     public Lesson(String fileName, String name, String description)
     {
         this.fileName    = fileName;
@@ -69,6 +86,11 @@ public class Lesson implements Serializable
         return value;
     }
 
+    /*******************************************************************************
+     * Adds the lesson to the JSONArray
+     *
+     * @param array The array to put the lesson into
+     ******************************************************************************/
     public void addLesson(JSONArray array) throws JSONException
     {
         JSONObject json = new JSONObject();
@@ -81,6 +103,12 @@ public class Lesson implements Serializable
         array.put(json);
     }
 
+    /*******************************************************************************
+     * Adds the lesson to the JSONArray
+     *
+     * @param context The context used to load the lesson
+     * @param cardChooser Used to load the lesson
+     ******************************************************************************/
     public void activateLesson(Context context, CardChooser cardChooser)
     {
         //Activate the current lesson, but don't save it (i.e. pass null) Otherwise the newly selected lesson will be saved when you want the previous lesson.

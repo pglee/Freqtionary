@@ -13,6 +13,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 
 /**
+ * The controller for displaying the list of cards
+ *
  * Created by plee on 11/3/14.
  */
 public class CardListFragment extends ListFragment
@@ -28,6 +30,11 @@ public class CardListFragment extends ListFragment
 
     private CardChooser cardChooser;
 
+    /************************************************************************
+     * call back when the page is first opened
+     *
+     * @param savedInstanceState contains the card chooser being passed to this page
+     *************************************************************************/
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
@@ -38,7 +45,11 @@ public class CardListFragment extends ListFragment
         setListAdapter(adapter);
     }
 
-    //Factory method
+    /************************************************************************
+     * Factory method
+     *
+     * @param cardChooser The chooser object used to retrieve the card to display
+     *************************************************************************/
     public static CardListFragment newInstance(CardChooser cardChooser)
     {
         Bundle args = new Bundle();
@@ -109,6 +120,9 @@ public class CardListFragment extends ListFragment
         }
     }
 
+    /************************************************************************
+     * The listener for the selection widget for the repetition selection in the list
+     *************************************************************************/
     private class RepetitionSpinnerListener implements AdapterView.OnItemSelectedListener
     {
         private Card spinnerCard;

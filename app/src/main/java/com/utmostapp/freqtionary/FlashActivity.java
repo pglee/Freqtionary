@@ -4,6 +4,9 @@ import android.app.Fragment;
 import android.util.Log;
 
 
+/*
+The activity for the Flash card display
+ */
 public class FlashActivity extends SingleFragmentActivity
 {
     private static final String TAG = "FlashActivity";

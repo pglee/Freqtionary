@@ -5,13 +5,21 @@ import android.media.MediaPlayer;
 import android.util.Log;
 
 /**
+ * Plays audio for the user
+ *
  * Created by plee on 10/15/14.
  */
 public class AudioPlayer
 {
     private static final String TAG = "AudioPlayer";
+
+    //utility to play audio
     private MediaPlayer mPlayer;
 
+    /**********************************************************************************
+     * Stops the currently playing audio if an audio is playing. Does nothing if no
+     * audio is playing.
+     ***********************************************************************************/
     public void stop()
     {
         if(mPlayer != null)
@@ -22,6 +30,12 @@ public class AudioPlayer
         }
     }
 
+    /**********************************************************************************
+     * Plays the audio stored int the fileName
+     *
+     * @param context The context defines where the file is located
+     * @param fileName The name of the audio file to play
+     ***********************************************************************************/
     public void play(Context context, String fileName)
     {
         stop();

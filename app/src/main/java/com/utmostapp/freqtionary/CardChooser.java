@@ -7,6 +7,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
+ * Tool for selecting the next or previous card in the stack
+ *
  * Created by plee on 9/21/14.
  */
 public class CardChooser implements Serializable
@@ -35,7 +37,13 @@ public class CardChooser implements Serializable
 
     }
 
-    //factory method
+    /************************************************************************
+     * factory method
+     * @param context Used to save and retrieve resources
+     * @param prevLesson The lesson that was being used previous to this one. Saves the lesson.
+     * @param newFileName The file name that contains the new lesson.
+     * @return Instance of the CardChooser
+     *************************************************************************/
     public static CardChooser getInstance(Context context, Lesson prevLesson, String newFileName)
     {
         if(singleton == null)
@@ -47,7 +55,12 @@ public class CardChooser implements Serializable
         return singleton;
     }
 
-    //loads the lesson from the file system either from the sandbox if saved before or from the raw resource
+    /************************************************************************
+     * loads the lesson from the file system either from the sandbox if saved before or from the raw resource
+     * @param context Used to save and retrieve resources
+     * @param prevLesson The lesson that was being used previous to this one. Saves the lesson.
+     * @param newFileName The file name that contains the new lesson.
+     *************************************************************************/
     public void loadLesson(Context context, Lesson prevLesson, String newFileName)
     {
         Log.d(TAG, "loadLesson. Saving cards " + prevLesson);
@@ -80,7 +93,11 @@ public class CardChooser implements Serializable
         }
     }
 
-    //save words to the sandbox
+    /************************************************************************
+     * save words to the sandbox
+     * @param context Used to save and retrieve resources
+     * @param lesson The lesson to save
+     *************************************************************************/
     public boolean saveCards(Context context, Lesson lesson)
     {
         boolean isOkay;
@@ -106,6 +123,7 @@ public class CardChooser implements Serializable
         return isOkay;
     }
 
+    //utility to get the resource name of the file
     private String resourceName(String fileName)
     {
         String resourceName = fileName.substring(0, fileName.lastIndexOf('.'));
@@ -114,21 +132,25 @@ public class CardChooser implements Serializable
         return resourceName;
     }
 
+    //The sum of all items with a high frequency
     public String highTotal()
     {
         return Integer.toString(highList.size());
     }
 
+    //The sum of all items with a medium frequency
     public String mediumTotal()
     {
         return Integer.toString(medList.size());
     }
 
+    //The sum of all items with a low frequency
     public String lowTotal()
     {
         return Integer.toString(lowList.size());
     }
 
+    //The sum of all items with a never frequency
     public String neverTotal()
     {
         return Integer.toString(neverList.size());
@@ -199,6 +221,7 @@ public class CardChooser implements Serializable
         Log.d(TAG, "setNeverFrequency");
     }
 
+    //The master list of all cards
     public ArrayList<Card> getMasterList()
     {
         return this.masterList;

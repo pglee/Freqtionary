@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.util.Log;
 
 /**
+ * The List of cards wrapper contains the card list fragment
+ *
  * Created by plee on 11/3/14.
  */
 public class CardListActivity extends SingleFragmentActivity
